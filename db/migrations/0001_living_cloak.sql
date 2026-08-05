@@ -1,0 +1,1 @@
+ALTER TABLE "quotation_presets" ADD COLUMN "notes" text;

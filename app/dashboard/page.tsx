@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { ReydexMark } from "@/components/brand/reydex-mark";
 import { requireSession } from "@/lib/auth/session";
 import { brandLogo, COMPANY_NAME } from "@/lib/brand";
 
-import { SignOutButton } from "./sign-out-button";
+import { signOut } from "@/app/login/actions";
+
+import { SignOutSubmit } from "./sign-out-button";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -30,7 +33,9 @@ export default async function DashboardPage() {
             </span>
           ) : null}
         </div>
-        <SignOutButton />
+        <form action={signOut}>
+          <SignOutSubmit />
+        </form>
       </header>
 
       <div className="flex flex-1 items-center justify-center px-5 py-16 sm:px-8">
@@ -42,9 +47,23 @@ export default async function DashboardPage() {
             Welcome, {displayName}
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-gold-100/55">
-            Your {COMPANY_NAME} account is authenticated. The quotation
-            workspace will live here.
+            Your {COMPANY_NAME} account is authenticated.
           </p>
+
+          <div className="mt-7 flex flex-wrap justify-center gap-3">
+            <Link
+              href="/quotations/new"
+              className="reydex-submit inline-flex h-10 items-center rounded-lg px-5 text-sm font-semibold"
+            >
+              New quotation
+            </Link>
+            <Link
+              href="/quotations"
+              className="inline-flex h-10 items-center rounded-lg border border-gold-500/25 px-5 text-sm font-medium text-gold-100/80 transition-colors hover:border-gold-400/45 hover:text-gold-100"
+            >
+              All quotations
+            </Link>
+          </div>
         </div>
       </div>
     </main>

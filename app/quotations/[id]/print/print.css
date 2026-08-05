@@ -1,0 +1,558 @@
+/*
+ * Print styling for generated quotations.
+ *
+ * Two things drive the structure:
+ *
+ * 1. `@page { margin: 0 }` plus a `position: fixed` letterhead — browsers repeat
+ *    fixed elements on every printed page, which is what the source documents
+ *    do. The sheet then pads its top to clear that reserved band.
+ * 2. Font stacks name Calibri and Times New Roman first. Both ship with Windows
+ *    and Office, so on the machine these are printed from the output matches the
+ *    original Word documents; elsewhere it degrades to the system equivalents.
+ */
+
+.q-page {
+  --q-sheet-width: 210mm;
+  --q-sheet-height: 297mm;
+  --q-side: 18mm;
+  /* Drawn height of the letterhead itself. */
+  --q-lh-height: 40mm;
+  /*
+   * Band reserved on every page. Slightly taller than the letterhead so the
+   * registration line never butts against the first line of the body.
+   */
+  --q-header: 45mm;
+  --q-ink: #14100a;
+  /* Darker than the screen gold (#f0b323), which is too light on white paper. */
+  --q-gold-print: #a97615;
+  --q-muted: #4a4a4a;
+  --q-faint: #7c7c7c;
+  --q-rule: #000;
+
+  font-family: Calibri, Carlito, "Segoe UI", system-ui, sans-serif;
+  font-size: 11pt;
+  line-height: 1.35;
+  color: #000;
+}
+
+/* ---------- Screen preview: a white sheet on a neutral backdrop ---------- */
+
+.q-viewport {
+  min-height: 100dvh;
+  background: #52525b;
+  padding: 2rem 1rem 4rem;
+}
+
+.q-sheet {
+  position: relative;
+  width: var(--q-sheet-width);
+  min-height: var(--q-sheet-height);
+  margin: 0 auto;
+  background: #fff;
+  box-shadow: 0 18px 50px rgb(0 0 0 / 0.45);
+  padding: var(--q-header) var(--q-side) 22mm;
+}
+
+/* ---------- Letterhead (modern) ---------- */
+
+.q-letterhead {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--q-lh-height);
+  padding: 10mm var(--q-side) 0;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.q-lh-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8mm;
+}
+
+.q-lh-identity {
+  display: flex;
+  align-items: center;
+  gap: 4.5mm;
+}
+
+.q-lh-company {
+  font-size: 13.5pt;
+  font-weight: 700;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+  line-height: 1.15;
+  color: var(--q-ink);
+}
+
+.q-lh-tagline {
+  margin-top: 0.8mm;
+  font-size: 8.5pt;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--q-gold-print);
+}
+
+/* Right-hand contact block: a quiet label column, then the value. */
+.q-lh-contact {
+  flex-shrink: 0;
+  max-width: 82mm;
+  text-align: right;
+  font-size: 8pt;
+  line-height: 1.5;
+  color: var(--q-muted);
+}
+
+.q-lh-key {
+  display: inline-block;
+  min-width: 12mm;
+  margin-right: 1.5mm;
+  font-size: 6.8pt;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--q-faint);
+}
+
+.q-lh-rule {
+  margin-top: auto;
+  height: 0.9mm;
+  background: linear-gradient(
+    90deg,
+    var(--q-gold-print) 0%,
+    #e8c169 55%,
+    rgb(0 0 0 / 0) 100%
+  );
+}
+
+.q-lh-meta {
+  margin-top: 1.6mm;
+  font-size: 7pt;
+  letter-spacing: 0.06em;
+  color: var(--q-faint);
+  display: flex;
+  align-items: center;
+  gap: 2.5mm;
+}
+
+.q-lh-sep {
+  width: 0.9mm;
+  height: 0.9mm;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* ---------- Shared text ---------- */
+
+.q-strong {
+  font-weight: 700;
+}
+.q-center {
+  text-align: center;
+}
+.q-right {
+  text-align: right;
+}
+.q-indent {
+  text-indent: 8mm;
+}
+
+.q-salutation {
+  margin-top: 4mm;
+}
+
+.q-intro {
+  margin-top: 2mm;
+  text-align: justify;
+}
+
+.q-closing {
+  margin-top: 5mm;
+  text-align: justify;
+}
+
+/* ---------- Supply layout ---------- */
+
+.q-addressee {
+  margin-top: 2mm;
+}
+
+.q-date {
+  margin-top: 2mm;
+}
+
+.q-meta {
+  margin-top: 4mm;
+  border-collapse: collapse;
+}
+
+.q-meta th {
+  width: 26mm;
+  text-align: left;
+  font-weight: 700;
+  vertical-align: top;
+}
+
+.q-meta td {
+  padding-left: 2mm;
+  vertical-align: top;
+}
+
+.q-item {
+  margin-top: 6mm;
+  break-inside: avoid;
+}
+
+.q-section-title {
+  text-align: center;
+  font-size: 11pt;
+  font-weight: 700;
+  margin-bottom: 3mm;
+}
+
+.q-item-title {
+  font-size: 11pt;
+  font-weight: 700;
+}
+
+.q-item-description {
+  margin-top: 2mm;
+  text-align: justify;
+}
+
+.q-specs {
+  margin: 2mm 0 0 10mm;
+  list-style: disc;
+}
+
+.q-specs li {
+  margin-bottom: 0.5mm;
+}
+
+.q-price-table {
+  margin: 4mm auto 0;
+  width: 62%;
+  border-collapse: collapse;
+}
+
+.q-price-table th,
+.q-price-table td {
+  border: 1px solid var(--q-rule);
+  padding: 1.5mm 2mm;
+  text-align: center;
+  font-size: 10.5pt;
+}
+
+.q-price-table th {
+  font-weight: 700;
+}
+
+.q-grand-total {
+  margin-top: 6mm;
+  text-align: right;
+  font-size: 13pt;
+  font-weight: 700;
+}
+
+/* ---------- Service proposal layout ---------- */
+
+.q-subject {
+  text-align: center;
+  font-size: 11.5pt;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.q-date-block {
+  margin-top: 5mm;
+}
+
+.q-attention {
+  margin-top: 4mm;
+}
+
+.q-attention-address {
+  margin-left: 12mm;
+  font-style: italic;
+}
+
+.q-ref {
+  margin-top: 2mm;
+}
+
+.q-costing {
+  margin: 5mm 0 0;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.q-costing th,
+.q-costing td {
+  border: 1px solid var(--q-rule);
+  padding: 2mm;
+  font-size: 10.5pt;
+  vertical-align: middle;
+}
+
+.q-costing th {
+  text-align: center;
+  font-weight: 700;
+}
+
+.q-total-row td {
+  font-weight: 700;
+  font-style: italic;
+  text-align: center;
+}
+
+.q-in-words {
+  margin-top: 5mm;
+  text-align: center;
+  font-weight: 700;
+  font-style: italic;
+}
+
+/* ---------- Scope of works ---------- */
+
+.q-scope {
+  margin-top: 7mm;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 11pt;
+}
+
+.q-scope-heading {
+  font-family: Calibri, Carlito, sans-serif;
+  font-size: 11pt;
+  font-weight: 700;
+}
+
+.q-scope-section {
+  margin-top: 5mm;
+}
+
+.q-scope-title {
+  font-weight: 700;
+  text-decoration: underline;
+  font-size: 12pt;
+}
+
+.q-scope-intro {
+  margin: 2mm 0 0 10mm;
+  text-align: justify;
+}
+
+.q-scope-list {
+  list-style: none;
+  margin: 1.5mm 0 0 10mm;
+  padding: 0;
+}
+
+.q-scope-list.q-scope-depth-0 {
+  margin-left: 8mm;
+}
+
+.q-scope-list li {
+  margin-bottom: 1mm;
+}
+
+/* Hanging indent so wrapped lines align under the text, not the marker. */
+.q-scope-item {
+  display: block;
+  padding-left: 8mm;
+  text-indent: -8mm;
+  text-align: justify;
+}
+
+.q-scope-label {
+  display: inline-block;
+  min-width: 6mm;
+  font-weight: 700;
+}
+
+/* ---------- Terms ---------- */
+
+.q-terms {
+  margin-top: 7mm;
+  break-inside: avoid;
+}
+
+.q-terms-title {
+  font-size: 11pt;
+  font-weight: 700;
+}
+
+.q-terms-table {
+  margin-top: 2mm;
+  border-collapse: collapse;
+}
+
+.q-terms-table th {
+  text-align: left;
+  font-weight: 700;
+  vertical-align: top;
+  width: 32mm;
+}
+
+.q-terms-table td {
+  padding-left: 2mm;
+  vertical-align: top;
+  padding-bottom: 1.5mm;
+}
+
+.q-term {
+  margin-top: 4mm;
+}
+
+.q-term h3 {
+  font-weight: 700;
+  font-size: 11pt;
+}
+
+.q-term p {
+  margin-top: 1mm;
+}
+
+.q-exclusions {
+  margin: 1mm 0 0 12mm;
+  list-style: decimal;
+}
+
+.q-note {
+  margin-top: 3mm;
+  margin-left: 8mm;
+  font-style: italic;
+}
+
+.q-bank {
+  margin-top: 3mm;
+}
+
+/* ---------- Signature ---------- */
+
+.q-signature {
+  margin-top: 10mm;
+  break-inside: avoid;
+}
+
+.q-sig-thanks {
+  margin-bottom: 1mm;
+}
+
+/*
+ * Reserves the band the signature sits in. The scan is pulled down so its
+ * strokes cross the name rule, as a wet signature would; when no scan exists
+ * the band stays empty and leaves room to sign by hand.
+ */
+.q-sig-mark {
+  height: 13mm;
+  display: flex;
+  align-items: flex-end;
+  padding-left: 6mm;
+}
+
+.q-sig-image {
+  height: auto;
+  margin-bottom: -3mm;
+  /* Keep the ink crisp when the browser scales the scan for print. */
+  image-rendering: auto;
+}
+
+.q-sig-name {
+  border-top: 1px solid var(--q-rule);
+  display: inline-block;
+  min-width: 62mm;
+  padding-top: 1mm;
+  text-align: center;
+}
+
+.q-sig-title {
+  font-size: 10pt;
+  color: var(--q-muted);
+}
+
+/* ---------- Toolbar (screen only) ---------- */
+
+.q-toolbar {
+  width: var(--q-sheet-width);
+  margin: 0 auto 1rem;
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.q-toolbar-note {
+  margin-right: auto;
+  color: #e4e4e7;
+  font-size: 0.8rem;
+}
+
+.q-print-button {
+  background: linear-gradient(180deg, #ffd95c, #f0b323 55%, #d1901a);
+  color: #0d0904;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.55rem 1.1rem;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.q-back-link {
+  color: #e4e4e7;
+  font-size: 0.85rem;
+  text-decoration: underline;
+}
+
+/* ---------- Print ---------- */
+
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  .q-viewport {
+    background: #fff;
+    padding: 0;
+    min-height: 0;
+  }
+
+  .q-sheet {
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    box-shadow: none;
+    /* The fixed letterhead repeats per page, so every page reserves the band. */
+    padding: var(--q-header) var(--q-side) 16mm;
+  }
+
+  .q-letterhead {
+    position: fixed;
+  }
+
+  .q-toolbar {
+    display: none;
+  }
+
+  /* Avoid orphaned headings just above a page break. */
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
+  }
+
+  table {
+    break-inside: auto;
+  }
+
+  tr,
+  td,
+  th {
+    break-inside: avoid;
+  }
+}

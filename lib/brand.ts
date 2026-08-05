@@ -7,27 +7,37 @@ export const COMPANY_NAME = "Reydex Fire Extinguisher Trading";
 export const COMPANY_SHORT_NAME = "Reydex";
 export const APP_NAME = "Reydex Quotations";
 
-export type BrandLogo = {
+export type BrandImage = {
   /** URL-encoded path, ready to hand to `next/image`. */
   src: string;
-  /** Intrinsic pixel dimensions, so the mark is never stretched. */
+  /** Intrinsic pixel dimensions, so the asset is never stretched. */
   width: number;
   height: number;
 };
+
+/** Kept as an alias: the mark component was written against this name. */
+export type BrandLogo = BrandImage;
 
 /**
  * Candidate logo files, in preference order.
  *
  * "Logo text no outline" wins: it is cropped tight to the artwork and its
- * transparent pixels are clean black, so it composites onto the dark brand
- * surface without a halo. "Logo high res" is the same lockup but padded and
- * carries a leftover olive gradient in its fully-transparent pixels.
+ * transparent pixels are clean black, so it composites onto a page without a
+ * halo. "Logo high res" is the same lockup but padded and carries a leftover
+ * olive gradient in its fully-transparent pixels.
  */
 const LOGO_CANDIDATES = [
   "images/Logo text no outline.png",
   "images/Logo high res.png",
   "reydex-logo.png",
   "reydex-logo.svg",
+] as const;
+
+/** Scanned signature, printed above the name rule on quotations. */
+const SIGNATURE_CANDIDATES = [
+  "images/signature.png",
+  "images/signature.svg",
+  "signature.png",
 ] as const;
 
 /** Reads intrinsic dimensions straight from the PNG IHDR chunk. */
@@ -80,8 +90,9 @@ function readSvgSize(path: string): { width: number; height: number } | null {
   return null;
 }
 
-function resolveBrandLogo(): BrandLogo | null {
-  for (const candidate of LOGO_CANDIDATES) {
+/** First candidate under `public/` that exists and whose size can be read. */
+function resolveBrandImage(candidates: readonly string[]): BrandImage | null {
+  for (const candidate of candidates) {
     const path = join(process.cwd(), "public", candidate);
     if (!existsSync(path)) continue;
 
@@ -92,7 +103,7 @@ function resolveBrandLogo(): BrandLogo | null {
     if (!size) continue;
 
     return {
-      // The filenames contain spaces; encode per segment so the leading
+      // Filenames may contain spaces; encode per segment so the leading
       // slashes survive.
       src: `/${candidate.split("/").map(encodeURIComponent).join("/")}`,
       ...size,
@@ -102,8 +113,10 @@ function resolveBrandLogo(): BrandLogo | null {
   return null;
 }
 
-/**
+/*
  * Resolved once at module load — `public/` is immutable at runtime, so there is
  * no reason to hit the filesystem per request.
  */
-export const brandLogo: BrandLogo | null = resolveBrandLogo();
+export const brandLogo: BrandImage | null = resolveBrandImage(LOGO_CANDIDATES);
+export const signatureImage: BrandImage | null =
+  resolveBrandImage(SIGNATURE_CANDIDATES);

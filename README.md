@@ -84,6 +84,81 @@ npx neon@latest neon-auth user delete <user-id>
 > npx neon@latest neon-auth domain add https://app.reydex.com
 > ```
 
+## Database
+
+Schema is managed as code with Drizzle; `db/schema.ts` is the source of truth.
+
+```bash
+npm run db:generate   # write SQL to db/migrations after editing db/schema.ts
+npm run db:migrate    # apply pending migrations (direct, unpooled connection)
+npm run db:seed       # load the catalogue — idempotent, safe to re-run
+npm run db:studio     # browse the data
+```
+
+Driver is `node-postgres`, not `@neondatabase/serverless`: creating a quotation
+writes header, line items and total in one interactive transaction, and the
+serverless driver needs a WebSocket global that Node 20 does not provide.
+`db/connection.ts` pins `sslmode=verify-full` — Neon issues URLs with
+`sslmode=require`, which `pg` 9 will reinterpret with weaker semantics.
+
+### Model notes
+
+Two decisions worth knowing before extending it:
+
+- **Price is keyed on (product, service kind, capacity)**, not on product. A
+  10 lb dry-chemical unit is ₱1,200 brand new but ₱600 to refill, and the 50 lb
+  refill is ₱3,000. Superseded prices stay as history via `effective_to`; a
+  partial unique index keeps exactly one live price per variant.
+- **`quotation_items` stores a full snapshot** of what was quoted (name,
+  description, specs, capacity, unit, price). Editing the catalogue must never
+  restate a quotation that has already gone out. `product_id` is only a soft
+  backlink and is nulled if the catalogue entry is deleted. `line_total` is a
+  Postgres generated column so a line can never disagree with its own inputs.
+
+Application tables live in `public`. Neon Auth owns `neon_auth` and
+re-provisions it per branch, so nothing here holds a foreign key into it —
+user ids are stored by value.
+
+`quotation_presets` holds the three reusable boilerplate sets found in the
+sample quotations (brand-new supply, refilling & servicing, PM proposal),
+including the full scope of works and exclusions.
+
+## Quotations
+
+Two layouts, matching the sample documents:
+
+| Template           | Shape                                                                            |
+| ------------------ | -------------------------------------------------------------------------------- |
+| `supply`           | Per-item spec panels, each with its own quantity/price table, then a grand total |
+| `service_proposal` | One consolidated costing table, amount in words, scope of works, exclusions      |
+
+Raise one at **/quotations/new**: pick a customer and a type, add items, save.
+The item picker offers *price variants* rather than products, because a name
+alone cannot be priced — "DRY CHEMICAL TYPE" is ₱1,200 new and ₱600 to refill.
+The running total is computed with the same integer-centavo arithmetic Postgres
+uses for the stored one, so the preview cannot disagree with the saved figure.
+
+`npm run db:seed-samples -- --reset` rebuilds the three sample quotations from
+the catalogue and asserts each total against the original PDF — a cheap
+end-to-end check that products, price variants, presets, snapshots and totals
+still line up.
+
+Open one at `/quotations`, then **Print / Save as PDF**. Set the browser's
+margins to *None*: the letterhead is part of the page and repeats on every sheet
+via a `position: fixed` header, so browser headers would double up.
+
+Some behaviour that is deliberate rather than incidental:
+
+- **Consecutive lines for the same product collapse into one ITEM block** with a
+  row per capacity. The Umicore sample shows the 10 lb and 50 lb refills under a
+  single "ITEM 1: DRY CHEMICAL TYPE", not as two numbered items.
+- **The capacity column appears per block**, not per document — the smoke
+  detector table has no capacity column, the extinguisher table does.
+- **Column headings follow the service kind**: brand-new tables read TOTAL PRICE,
+  refill tables read AMOUNT, as in the samples.
+- Print CSS names Calibri and Times New Roman first, so output on a Windows
+  machine matches the original Word documents.
+
 ## How auth is wired
 
 | File                              | Role                                                         |
@@ -97,8 +172,20 @@ npx neon@latest neon-auth user delete <user-id>
 | `app/login/`                      | Branded sign-in screen and its Server Action                 |
 
 Two layers guard protected routes: `proxy.ts` turns away unauthenticated
-traffic cheaply, and `requireSession()` runs inside each page — the proxy check
-is optimistic and reads only the cookie, so it is never the sole defence.
+traffic cheaply, and `requireSession()` runs inside each page and Server Action
+— the proxy check is optimistic and reads only the cookie, so it is never the
+sole defence.
+
+> **`proxy.ts` deliberately only guards GET/HEAD.** In SDK 0.4.2-beta,
+> `auth.middleware()` validates the session by forwarding the incoming request
+> to the auth server's `get-session` endpoint, which answers **415 Unsupported
+> Media Type** for anything that is not a plain GET. On a matched route that
+> turns every Server Action POST into a redirect to `loginUrl` before the action
+> runs — which silently broke both the quotation builder and sign-out (the
+> redirect looked like success while the session survived). Auth on those POSTs
+> comes from `requireSession()` inside the action; this is verified by a test
+> that submits a valid action payload with no session and confirms nothing is
+> written. Re-check this if the SDK is upgraded.
 
 ## Scripts
 

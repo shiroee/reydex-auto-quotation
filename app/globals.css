@@ -1,0 +1,183 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Reydex brand tokens
+   Derived from the corporate mark: molten gold on a near-black shield.
+   --------------------------------------------------------------------------- */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Gold ramp — 500 is the primary brand gold, 300 the highlight sheen. */
+  --color-gold-50: #fffdf2;
+  --color-gold-100: #fff6d1;
+  --color-gold-200: #ffe9a3;
+  --color-gold-300: #ffd95c;
+  --color-gold-400: #f8c531;
+  --color-gold-500: #f0b323;
+  --color-gold-600: #d1901a;
+  --color-gold-700: #a96f15;
+  --color-gold-800: #7a5210;
+  --color-gold-900: #4a320a;
+
+  /* Warm near-blacks taken from the shield interior. */
+  --color-ink-700: #241a0d;
+  --color-ink-800: #171008;
+  --color-ink-900: #0d0904;
+  --color-ink-950: #060402;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* ---------------------------------------------------------------------------
+   Auth surface
+   The sign-in experience is deliberately dark in both colour schemes so the
+   gold mark always sits on the contrast it was designed for.
+   --------------------------------------------------------------------------- */
+.reydex-auth-surface {
+  background-color: var(--color-ink-950);
+  background-image:
+    radial-gradient(
+      70rem 40rem at 15% -10%,
+      color-mix(in oklab, var(--color-gold-500) 22%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      50rem 35rem at 100% 110%,
+      color-mix(in oklab, var(--color-gold-700) 20%, transparent),
+      transparent 65%
+    );
+}
+
+/* Slow breathing sheen behind the brand panel. */
+.reydex-ember {
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklab, var(--color-gold-400) 40%, transparent),
+    transparent
+  );
+  animation: reydex-ember 9s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+@keyframes reydex-ember {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.08);
+  }
+}
+
+/* Hairline gold edge that reads as brushed metal rather than a flat border. */
+.reydex-card {
+  background-color: color-mix(in oklab, var(--color-ink-800) 82%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-gold-500) 18%, transparent);
+  box-shadow:
+    0 1px 0 0 color-mix(in oklab, var(--color-gold-200) 12%, transparent) inset,
+    0 30px 60px -20px rgb(0 0 0 / 0.85);
+}
+
+.reydex-field {
+  background-color: color-mix(in oklab, var(--color-ink-950) 55%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-gold-200) 14%, transparent);
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background-color 150ms ease;
+}
+
+.reydex-field:hover:not(:focus) {
+  border-color: color-mix(in oklab, var(--color-gold-300) 28%, transparent);
+}
+
+.reydex-field:focus {
+  outline: none;
+  border-color: var(--color-gold-400);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-gold-500) 25%, transparent);
+}
+
+.reydex-field[aria-invalid="true"] {
+  border-color: #f87171;
+}
+
+.reydex-field[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 3px rgb(248 113 113 / 0.25);
+}
+
+/* Molten-gold primary action. */
+.reydex-submit {
+  background-image: linear-gradient(
+    180deg,
+    var(--color-gold-300) 0%,
+    var(--color-gold-500) 55%,
+    var(--color-gold-600) 100%
+  );
+  color: var(--color-ink-900);
+  box-shadow:
+    0 1px 0 0 color-mix(in oklab, var(--color-gold-100) 70%, transparent) inset,
+    0 10px 24px -8px color-mix(in oklab, var(--color-gold-500) 55%, transparent);
+  transition:
+    filter 150ms ease,
+    transform 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.reydex-submit:hover:not(:disabled) {
+  filter: brightness(1.07);
+}
+
+.reydex-submit:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow:
+    0 1px 0 0 color-mix(in oklab, var(--color-gold-100) 40%, transparent) inset,
+    0 4px 12px -6px color-mix(in oklab, var(--color-gold-500) 45%, transparent);
+}
+
+.reydex-submit:focus-visible {
+  outline: 2px solid var(--color-gold-200);
+  outline-offset: 2px;
+}
+
+.reydex-submit:disabled {
+  filter: saturate(0.55) brightness(0.8);
+  cursor: not-allowed;
+}
+
+/* Gold-on-dark text selection so highlighting stays on-brand. */
+.reydex-auth-surface ::selection {
+  background-color: color-mix(in oklab, var(--color-gold-500) 40%, transparent);
+  color: var(--color-gold-100);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reydex-ember {
+    animation: none;
+  }
+
+  .reydex-submit,
+  .reydex-field {
+    transition: none;
+  }
+}

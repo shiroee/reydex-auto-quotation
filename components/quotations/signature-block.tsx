@@ -32,7 +32,7 @@ export function SignatureBlock({
       {thanks ? <p className="q-sig-thanks">Thank you very much.</p> : null}
       <p>Very Truly Yours,</p>
 
-      <div className="q-sig-mark">
+      <div className="q-sig-mark ml-8">
         {signature ? (
           <Image
             src={signature.src}

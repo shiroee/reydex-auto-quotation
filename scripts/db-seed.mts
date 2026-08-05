@@ -38,14 +38,10 @@ const COMPANY = {
   vatRegistered: false,
   mainAddress: "#58-A Daang Pari St. P-4 San Pedro Hagonoy, Bulacan",
   branchAddress: "P-2 Pag-Asa St. Del Pilar Castillejos Zambales",
-  // Union of the numbers printed across the three samples — they disagree,
-  // so confirm this list and drop anything retired.
-  phones: [
-    "0933-3347-702",
-    "0919-6638-522",
-    "0955-0424-993",
-    "0906-841-5056",
-  ],
+  // The samples disagreed on which numbers to print; these are the two
+  // confirmed current ones. 0919-6638-522 and 0955-0424-993 appeared on the
+  // True North and Umicore sheets but are retired — do not reinstate them.
+  phones: ["0933-3347-702", "0906-841-5056"],
   email: "reydexservices@gmail.com",
   footerLine:
     "Distributor of Portable type, Wheeled Type Fire Extinguishers and all kinds of Fighting Accessories and Materials, FDAS, FSS",

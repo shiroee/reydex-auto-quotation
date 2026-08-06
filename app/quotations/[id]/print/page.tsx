@@ -50,13 +50,41 @@ export default async function QuotationPrintPage({
       </div>
 
       <article className="q-sheet">
-        <Letterhead profile={data.profile} logo={brandLogo} />
-
-        {data.quotation.template === "service_proposal" ? (
-          <ServiceProposalLayout {...data} signature={signatureImage} />
-        ) : (
-          <SupplyLayout {...data} signature={signatureImage} />
-        )}
+        {/*
+         * The document is wrapped in a single-column layout table so the
+         * letterhead can live in a `thead`: browsers repeat a table header group
+         * at the top of every printed page *and* reserve its height in each
+         * page's flow, which padding on the sheet cannot do (padding applies
+         * once, to the first fragment). That reservation is what stops page two
+         * from printing underneath the letterhead. The empty `tfoot` reserves
+         * the bottom gap the same way. `role="presentation"` because none of
+         * this is tabular data.
+         */}
+        <table className="q-frame" role="presentation">
+          <thead>
+            <tr>
+              <td className="q-frame-head">
+                <Letterhead profile={data.profile} logo={brandLogo} />
+              </td>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td className="q-frame-body">
+                {data.quotation.template === "service_proposal" ? (
+                  <ServiceProposalLayout {...data} signature={signatureImage} />
+                ) : (
+                  <SupplyLayout {...data} signature={signatureImage} />
+                )}
+              </td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td className="q-frame-foot" />
+            </tr>
+          </tfoot>
+        </table>
       </article>
     </div>
   );

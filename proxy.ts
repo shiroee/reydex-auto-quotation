@@ -33,5 +33,11 @@ export default function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/quotations/:path*"],
+  matcher: [
+    "/dashboard/:path*",
+    "/quotations/:path*",
+    "/customers/:path*",
+    "/quotation-types/:path*",
+    "/items/:path*",
+  ],
 };

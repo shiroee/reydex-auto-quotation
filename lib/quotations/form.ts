@@ -23,6 +23,12 @@ export const FIELD = {
   notes: "notes",
   /** Repeated once per line, in document order. */
   itemVariant: "item.variant",
+  /**
+   * Repeated alongside the others, blank for a line that is not yet stored.
+   * Unused when creating; the editor uses it to tell an existing line from a new
+   * one, and so must submit it for every row to keep the lists aligned.
+   */
+  itemId: "item.id",
   itemQuantity: "item.quantity",
   itemSection: "item.section",
 } as const;

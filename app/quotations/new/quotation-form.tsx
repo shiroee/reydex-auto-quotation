@@ -3,45 +3,21 @@
 import Link from "next/link";
 import { useActionState, useMemo, useState } from "react";
 
+import {
+  blankLine,
+  LineItemsField,
+  subjectFromLines,
+  variantIndexOf,
+  type Line,
+} from "@/components/quotations/line-items-field";
 import type {
   CustomerOption,
   PresetOption,
   PriceVariant,
 } from "@/lib/quotations/catalogue";
-import {
-  FIELD,
-  encodeVariant,
-  suggestSectionTitle,
-  type QuotationFormState,
-} from "@/lib/quotations/form";
-import { formatPeso, multiplyAmount, sumAmounts } from "@/lib/quotations/money";
+import { FIELD, type QuotationFormState } from "@/lib/quotations/form";
 
 import { createQuotationAction } from "./actions";
-
-type Line = {
-  /** Stable React key; not submitted. */
-  key: number;
-  variant: string;
-  quantity: string;
-  section: string;
-  /** While true, the section heading tracks the suggested one. */
-  autoSection: boolean;
-};
-
-const SERVICE_LABEL: Record<string, string> = {
-  new: "Brand new",
-  refill: "Refill / service",
-  maintenance: "Maintenance",
-};
-
-let nextKey = 1;
-const blankLine = (): Line => ({
-  key: nextKey++,
-  variant: "",
-  quantity: "",
-  section: "",
-  autoSection: true,
-});
 
 export function QuotationForm({
   customers,
@@ -66,73 +42,15 @@ export function QuotationForm({
   const [subject, setSubject] = useState("");
   const [lines, setLines] = useState<Line[]>([blankLine()]);
 
-  const variantIndex = useMemo(() => {
-    const map = new Map<string, PriceVariant>();
-    for (const v of variants) {
-      map.set(encodeVariant(v.productId, v.serviceKind, v.capacityLabel), v);
-    }
-    return map;
-  }, [variants]);
+  const variantIndex = useMemo(() => variantIndexOf(variants), [variants]);
 
   const activePreset = presets.find((p) => p.slug === presetSlug);
   const selectedCustomer = customers.find((c) => c.id === customerId);
 
-  /* Live total, computed the same way Postgres will. */
-  const lineTotals = lines.map((line) => {
-    const variant = variantIndex.get(line.variant);
-    if (!variant || line.quantity === "" || Number(line.quantity) <= 0) {
-      return null;
-    }
-    try {
-      return multiplyAmount(variant.unitPrice, line.quantity);
-    } catch {
-      return null;
-    }
-  });
-  const total = sumAmounts(lineTotals.filter((t): t is string => t !== null));
-
-  function updateLine(key: number, patch: Partial<Line>) {
-    setLines((current) =>
-      current.map((line) => (line.key === key ? { ...line, ...patch } : line)),
-    );
-  }
-
-  function chooseVariant(key: number, value: string) {
-    const variant = variantIndex.get(value);
-
-    setLines((current) =>
-      current.map((line) => {
-        if (line.key !== key) return line;
-
-        // Keep the heading in step with the item until it is edited by hand.
-        const section =
-          line.autoSection && variant
-            ? suggestSectionTitle(
-                variant.serviceKind,
-                variant.category,
-                variant.name,
-              )
-            : line.section;
-
-        return { ...line, variant: value, section };
-      }),
-    );
-  }
-
-  /** Fills the subject from the chosen items, in the samples' style. */
   function suggestSubject() {
-    const names = [
-      ...new Set(
-        lines
-          .map((l) => variantIndex.get(l.variant)?.name)
-          .filter((n): n is string => Boolean(n)),
-      ),
-    ];
-    if (names.length === 0) return;
-    setSubject(names.join(" AND ").toUpperCase());
+    const suggested = subjectFromLines(lines, variantIndex);
+    if (suggested !== "") setSubject(suggested);
   }
-
-  const lineErrors = state?.errors?.lines ?? {};
 
   return (
     <form action={formAction} className="flex flex-col gap-6" noValidate>
@@ -236,145 +154,13 @@ export function QuotationForm({
         </div>
       </section>
 
-      {/* ---------------- Items ---------------- */}
-      <section className="reydex-card rounded-2xl p-5 sm:p-6">
-        <div className="mb-5 flex items-baseline justify-between gap-4">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-gold-500/80">
-            Items
-          </h2>
-          {state?.errors?.items ? (
-            <p role="alert" className="text-sm text-red-300">
-              {state.errors.items}
-            </p>
-          ) : null}
-        </div>
-
-        <div className="flex flex-col gap-4">
-          {lines.map((line, index) => {
-            const variant = variantIndex.get(line.variant);
-            const lineTotal = lineTotals[index];
-            const error = lineErrors[index + 1];
-
-            return (
-              <div
-                key={line.key}
-                className="rounded-xl border border-gold-500/12 bg-ink-950/40 p-3.5"
-              >
-                <div className="flex flex-wrap items-start gap-3">
-                  <div className="min-w-60 flex-1">
-                    <select
-                      name={FIELD.itemVariant}
-                      value={line.variant}
-                      onChange={(e) => chooseVariant(line.key, e.target.value)}
-                      aria-label={`Item ${index + 1}`}
-                      aria-invalid={error ? "true" : undefined}
-                      className="reydex-field w-full rounded-lg px-3 py-2 text-sm text-gold-50"
-                    >
-                      <option value="">Select an item…</option>
-                      {variants.map((v) => {
-                        const value = encodeVariant(
-                          v.productId,
-                          v.serviceKind,
-                          v.capacityLabel,
-                        );
-                        return (
-                          <option key={value} value={value}>
-                            {v.name}
-                            {v.capacityLabel ? ` · ${v.capacityLabel}` : ""} ·{" "}
-                            {SERVICE_LABEL[v.serviceKind]} ·{" "}
-                            {formatPeso(v.unitPrice)}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
-
-                  <div className="w-24">
-                    <input
-                      name={FIELD.itemQuantity}
-                      value={line.quantity}
-                      onChange={(e) =>
-                        updateLine(line.key, { quantity: e.target.value })
-                      }
-                      inputMode="decimal"
-                      placeholder="Qty"
-                      aria-label={`Quantity for item ${index + 1}`}
-                      aria-invalid={error ? "true" : undefined}
-                      className="reydex-field w-full rounded-lg px-3 py-2 text-sm text-gold-50 placeholder:text-gold-100/25"
-                    />
-                  </div>
-
-                  <div className="w-28 pt-2 text-right text-sm tabular-nums text-gold-100/80">
-                    {lineTotal ? formatPeso(lineTotal) : "—"}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setLines((current) =>
-                        current.length === 1
-                          ? [blankLine()]
-                          : current.filter((l) => l.key !== line.key),
-                      )
-                    }
-                    aria-label={`Remove item ${index + 1}`}
-                    className="mt-1 rounded-lg px-2 py-1.5 text-gold-100/40 transition-colors hover:bg-red-500/10 hover:text-red-300"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                {/* Grouping header, prefilled from the item but editable. */}
-                <input
-                  name={FIELD.itemSection}
-                  value={line.section}
-                  onChange={(e) =>
-                    updateLine(line.key, {
-                      section: e.target.value,
-                      autoSection: false,
-                    })
-                  }
-                  placeholder="Section heading (optional)"
-                  aria-label={`Section heading for item ${index + 1}`}
-                  className="reydex-field mt-2.5 w-full rounded-lg px-3 py-1.5 text-xs text-gold-100/70 placeholder:text-gold-100/20"
-                />
-
-                {variant ? (
-                  <p className="mt-2 text-xs text-gold-100/35">
-                    {variant.sku} · unit {formatPeso(variant.unitPrice)} per{" "}
-                    {variant.unitLabel}
-                  </p>
-                ) : null}
-
-                {error ? (
-                  <p role="alert" className="mt-2 text-xs text-red-300">
-                    {error}
-                  </p>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="mt-4 flex items-center justify-between gap-4">
-          <button
-            type="button"
-            onClick={() => setLines((current) => [...current, blankLine()])}
-            className="rounded-lg border border-gold-500/25 px-3.5 py-2 text-sm font-medium text-gold-100/80 transition-colors hover:border-gold-400/45 hover:text-gold-100"
-          >
-            + Add item
-          </button>
-
-          <p className="text-right">
-            <span className="mr-3 text-xs uppercase tracking-wider text-gold-100/40">
-              Total
-            </span>
-            <span className="text-lg font-semibold tabular-nums text-gold-200">
-              {formatPeso(total)}
-            </span>
-          </p>
-        </div>
-      </section>
+      <LineItemsField
+        variants={variants}
+        lines={lines}
+        setLines={setLines}
+        lineErrors={state?.errors?.lines}
+        itemsError={state?.errors?.items}
+      />
 
       {/* ---------------- Terms ---------------- */}
       <details className="reydex-card rounded-2xl p-5 sm:p-6">

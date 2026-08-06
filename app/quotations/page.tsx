@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { LuCopy, LuFileText, LuPlus } from "react-icons/lu";
+import { LuCopy, LuFileText, LuPencil, LuPlus } from "react-icons/lu";
 
 import { AppHeader } from "@/components/app-header";
 import { DeleteRowButton } from "@/components/delete-row-button";
@@ -151,6 +151,13 @@ export default async function QuotationsPage(props: PageProps<"/quotations">) {
                           >
                             <LuFileText aria-hidden className="size-3.5" />
                             Open
+                          </Link>
+                          <Link
+                            href={`/quotations/${row.id}/edit`}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-gold-100/60 underline-offset-2 transition-colors hover:text-gold-100 hover:underline"
+                          >
+                            <LuPencil aria-hidden className="size-3.5" />
+                            Edit
                           </Link>
                           {/*
                            * Copying and re-dating both live on one page rather

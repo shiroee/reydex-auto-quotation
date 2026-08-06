@@ -6,14 +6,63 @@ import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { requireSession } from "@/lib/auth/session";
 import { parseQuoteDate } from "@/lib/quotations/dates";
+import {
+  EDIT_FIELD,
+  parseQuotationEditForm,
+  type QuotationEditState,
+} from "@/lib/quotations/edit-form";
 import { isQuotationId, REISSUE_FIELD as FIELD } from "@/lib/quotations/form";
 import {
   deleteQuotation,
   duplicateQuotation,
   setQuotationDate,
+  updateQuotation,
 } from "@/lib/quotations/service";
 
 export type ReissueState = { error?: string };
+
+/** Applies an edit, then opens the updated document. */
+export async function updateQuotationAction(
+  _prevState: QuotationEditState | null,
+  formData: FormData,
+): Promise<QuotationEditState> {
+  // Verified here as well as in the page: a Server Action is its own entry point.
+  await requireSession();
+
+  const id = formData.get(EDIT_FIELD.id);
+
+  if (!isQuotationId(id)) {
+    return { formError: "That quotation is no longer valid. Reload the page." };
+  }
+
+  const parsed = parseQuotationEditForm(formData);
+
+  if (!parsed.ok) return { errors: parsed.errors };
+
+  try {
+    const result = await updateQuotation(db, id, parsed.input);
+
+    if (!result.ok) return { formError: "That quotation has been deleted." };
+  } catch (cause) {
+    /*
+     * Most likely a line whose price was retired between loading the form and
+     * submitting it, which `updateQuotation` reports with a readable message.
+     * The edit is a single transaction, so nothing was half-applied.
+     */
+    console.error("[quotations] update failed", cause);
+
+    return {
+      formError:
+        cause instanceof Error
+          ? cause.message
+          : "Could not save the changes. Please try again.",
+    };
+  }
+
+  // Outside the try: `redirect` signals by throwing.
+  revalidateAffected(id);
+  redirect(`/quotations/${id}/print`);
+}
 
 /** The index, and the document itself where one is named. */
 function revalidateAffected(id?: string) {

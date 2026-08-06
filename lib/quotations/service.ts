@@ -16,6 +16,7 @@ import {
 } from "@/db/schema";
 
 import { todayInQuoteZone } from "./dates";
+import type { UpdateQuotationInput } from "./edit-form";
 import { normalizeSearch, toContainsPattern } from "./search";
 
 /**
@@ -305,6 +306,202 @@ async function recalculateTotal(tx: Tx, quotationId: string) {
       updatedAt: sql`now()`,
     })
     .where(eq(quotations.id, quotationId));
+}
+
+/**
+ * Resolves a line to be added during an edit, snapshotting the catalogue exactly
+ * as `createQuotation` does. Shared so a line added by an edit is indistinguishable
+ * from one added at creation.
+ */
+async function resolveNewItem(tx: Tx, item: QuotationItemInput) {
+  const capacityLabel = item.capacityLabel ?? "";
+
+  const [product] = await tx
+    .select()
+    .from(products)
+    .where(eq(products.id, item.productId))
+    .limit(1);
+
+  if (!product) throw new Error(`Unknown product: ${item.productId}`);
+
+  let unitPrice = item.unitPrice;
+
+  if (unitPrice === undefined) {
+    const [price] = await tx
+      .select({ unitPrice: prices.unitPrice })
+      .from(prices)
+      .where(
+        and(
+          eq(prices.productId, item.productId),
+          eq(prices.serviceKind, item.serviceKind),
+          eq(prices.capacityLabel, capacityLabel),
+          isNull(prices.effectiveTo),
+        ),
+      )
+      .limit(1);
+
+    if (!price) {
+      throw new Error(
+        `No live price for ${product.sku} (${item.serviceKind}` +
+          `${capacityLabel ? `, ${capacityLabel}` : ""}). ` +
+          `Add it to the price list or remove the line.`,
+      );
+    }
+
+    unitPrice = price.unitPrice;
+  }
+
+  const specs = await tx
+    .select({ text: productSpecs.text })
+    .from(productSpecs)
+    .where(eq(productSpecs.productId, item.productId))
+    .orderBy(asc(productSpecs.position));
+
+  return {
+    productId: product.id,
+    name: product.name,
+    serviceKind: item.serviceKind,
+    description: product.description,
+    specs: specs.map((s) => s.text),
+    capacityLabel,
+    unitLabel: product.unitLabel,
+    quantity: String(item.quantity),
+    unitPrice,
+  };
+}
+
+export type UpdateQuotationResult =
+  | { ok: true }
+  | { ok: false; reason: "not_found" };
+
+/**
+ * Applies an edit to a stored quotation.
+ *
+ * Lines are reconciled, not replaced. A line the editor sends back by id keeps
+ * its snapshot — the name, description, specs and unit price it was quoted at —
+ * and only its quantity, section heading and position move. A line the editor
+ * sends as a variant is new, and is priced from the catalogue like any other new
+ * line. A stored line that comes back at all is dropped.
+ *
+ * That asymmetry is the point: re-resolving every line would silently reprice a
+ * quotation because someone fixed a typo in its subject, which is exactly what
+ * the snapshot in `quotation_items` exists to prevent.
+ *
+ * Positions are rewritten from the submitted order, so lines can be reordered or
+ * removed without colliding with the `(quotation_id, position)` constraint —
+ * which is also why the old rows go first.
+ */
+export async function updateQuotation(
+  db: QuotationDb,
+  id: string,
+  input: UpdateQuotationInput,
+): Promise<UpdateQuotationResult> {
+  if (input.lines.length === 0) {
+    throw new Error("A quotation needs at least one line item.");
+  }
+
+  return db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select({ id: quotations.id })
+      .from(quotations)
+      .where(eq(quotations.id, id))
+      .limit(1);
+
+    if (!existing) return { ok: false, reason: "not_found" };
+
+    const stored = await tx
+      .select()
+      .from(quotationItems)
+      .where(eq(quotationItems.quotationId, id));
+
+    const stillHere = new Map(stored.map((item) => [item.id, item]));
+
+    /*
+     * Resolve everything before writing anything: a line whose price has been
+     * retired since must fail the whole edit, not leave it half-applied.
+     */
+    const rows: (typeof quotationItems.$inferInsert)[] = [];
+
+    for (const [index, line] of input.lines.entries()) {
+      const position = index + 1;
+
+      if (line.kind === "kept") {
+        const item = stillHere.get(line.id);
+
+        if (!item) {
+          throw new Error(
+            "One of the lines is no longer on this quotation. Reload and try again.",
+          );
+        }
+
+        rows.push({
+          quotationId: id,
+          position,
+          sectionTitle: line.sectionTitle,
+          productId: item.productId,
+          name: item.name,
+          serviceKind: item.serviceKind,
+          description: item.description,
+          specs: item.specs,
+          capacityLabel: item.capacityLabel,
+          unitLabel: item.unitLabel,
+          quantity: line.quantity,
+          // The price that was quoted, untouched.
+          unitPrice: item.unitPrice,
+        });
+
+        continue;
+      }
+
+      const resolved = await resolveNewItem(tx, line);
+      rows.push({ ...resolved, quotationId: id, position, sectionTitle: line.sectionTitle });
+    }
+
+    await tx
+      .update(quotations)
+      .set({
+        customerId: input.customerId,
+        template: input.template,
+        subject: input.subject,
+        quoteDate: input.quoteDate,
+        attentionTo: input.attentionTo,
+        salutation: input.salutation,
+        introParagraph: input.introParagraph,
+        closingParagraph: input.closingParagraph,
+        paymentTerms: input.paymentTerms,
+        deliveryTerms: input.deliveryTerms,
+        warrantyTerms: input.warrantyTerms,
+        mobilization: input.mobilization,
+        notes: input.notes,
+        validityDays: input.validityDays,
+        showBankDetails: input.showBankDetails,
+        updatedAt: sql`now()`,
+      })
+      .where(eq(quotations.id, id));
+
+    // Old rows first: positions are being reassigned, and the unique constraint
+    // on (quotation_id, position) would otherwise collide mid-write.
+    await tx.delete(quotationItems).where(eq(quotationItems.quotationId, id));
+    await tx.insert(quotationItems).values(rows);
+
+    await tx
+      .delete(quotationExclusions)
+      .where(eq(quotationExclusions.quotationId, id));
+
+    if (input.exclusions.length > 0) {
+      await tx.insert(quotationExclusions).values(
+        input.exclusions.map((text, i) => ({
+          quotationId: id,
+          position: i + 1,
+          text,
+        })),
+      );
+    }
+
+    await recalculateTotal(tx, id);
+
+    return { ok: true };
+  });
 }
 
 export type DuplicateQuotationResult =

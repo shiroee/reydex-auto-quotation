@@ -3,9 +3,15 @@
  *
  * Two things drive the structure:
  *
- * 1. `@page { margin: 0 }` plus a `position: fixed` letterhead — browsers repeat
- *    fixed elements on every printed page, which is what the source documents
- *    do. The sheet then pads its top to clear that reserved band.
+ * 1. `@page { margin: 0 }` plus a letterhead in a `thead` — browsers repeat a
+ *    table header group at the top of every printed page and reserve its height
+ *    in each page's flow, so the body can never print underneath it. A
+ *    `position: fixed` letterhead looks the same on page one but reserves
+ *    nothing on the pages after it (padding on the sheet applies only to the
+ *    first fragment), and Firefox paints it on page one only.
+ *    An empty `tfoot` reserves the bottom gap by the same mechanism. `@page`
+ *    margins would do that too, but the print dialog's own margin setting
+ *    overrides them, and the sheet is meant to be printed with margins off.
  * 2. Font stacks name Calibri and Times New Roman first. Both ship with Windows
  *    and Office, so on the machine these are printed from the output matches the
  *    original Word documents; elsewhere it degrades to the system equivalents.
@@ -18,10 +24,13 @@
   /* Drawn height of the letterhead itself. */
   --q-lh-height: 40mm;
   /*
-   * Band reserved on every page. Slightly taller than the letterhead so the
-   * registration line never butts against the first line of the body.
+   * Gap between the letterhead and the first line of the body, so the
+   * registration line never butts against it. Applied per page, because it is
+   * padding on the repeated header's cell rather than on the sheet.
    */
-  --q-header: 45mm;
+  --q-lh-gap: 5mm;
+  /* Reserved at the foot of every page by the frame's empty `tfoot`. */
+  --q-foot: 22mm;
   --q-ink: #14100a;
   /* Darker than the screen gold (#f0b323), which is too light on white paper. */
   --q-gold-print: #a97615;
@@ -44,22 +53,61 @@
 }
 
 .q-sheet {
-  position: relative;
   width: var(--q-sheet-width);
   min-height: var(--q-sheet-height);
   margin: 0 auto;
   background: #fff;
   box-shadow: 0 18px 50px rgb(0 0 0 / 0.45);
-  padding: var(--q-header) var(--q-side) 22mm;
+}
+
+/* ---------- Page frame: repeating letterhead + body ---------- */
+
+/*
+ * `table-layout: fixed` so the widest thing in the body (a costing table, a long
+ * unbroken word) sizes to the sheet instead of widening it.
+ */
+.q-frame {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+/* Belt and braces: the repeat behaviour hangs off these group displays. */
+.q-frame > thead {
+  display: table-header-group;
+}
+
+.q-frame > tfoot {
+  display: table-footer-group;
+}
+
+/*
+ * The gap below the letterhead belongs to the header cell, not to the body's
+ * `padding-top`: block-start padding applies only to a box's *first* fragment,
+ * so on page two the body would resume flush against the registration line,
+ * while the header group repeats in full — padding included — on every page.
+ */
+.q-frame-head {
+  padding: 0 0 var(--q-lh-gap);
+  /* Splitting the letterhead across a page break would be nonsense. */
+  break-inside: avoid;
+}
+
+/* Side padding only; the inline direction does apply to every fragment. */
+.q-frame-body {
+  vertical-align: top;
+  padding: 0 var(--q-side);
+}
+
+/* Spacer only — nothing is printed in the foot. */
+.q-frame-foot {
+  height: var(--q-foot);
+  padding: 0;
 }
 
 /* ---------- Letterhead (modern) ---------- */
 
 .q-letterhead {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
   height: var(--q-lh-height);
   padding: 10mm var(--q-side) 0;
   background: #fff;
@@ -513,7 +561,13 @@
 @media print {
   @page {
     size: A4;
+    /* The letterhead is full-bleed and sets its own side inset. */
     margin: 0;
+  }
+
+  .q-page {
+    /* Tighter than on screen: paper does not need the preview's breathing room. */
+    --q-foot: 16mm;
   }
 
   .q-viewport {
@@ -527,12 +581,6 @@
     min-height: 0;
     margin: 0;
     box-shadow: none;
-    /* The fixed letterhead repeats per page, so every page reserves the band. */
-    padding: var(--q-header) var(--q-side) 16mm;
-  }
-
-  .q-letterhead {
-    position: fixed;
   }
 
   .q-toolbar {
@@ -546,13 +594,18 @@
     break-after: avoid;
   }
 
-  table {
+  /*
+   * Scoped to the body cell: the frame's own row and cell must stay breakable,
+   * or the document would be one unfragmentable block and the pages after the
+   * first would never be laid out.
+   */
+  .q-frame-body table {
     break-inside: auto;
   }
 
-  tr,
-  td,
-  th {
+  .q-frame-body tr,
+  .q-frame-body td,
+  .q-frame-body th {
     break-inside: avoid;
   }
 }

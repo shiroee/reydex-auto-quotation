@@ -12,7 +12,8 @@ import { ReydexMark } from "../brand/reydex-mark";
  * block, underlined blue mailto) with a single sans-serif scale, a muted grey
  * for secondary detail, and one accent colour.
  *
- * Rendered `position: fixed` by print.css so browsers repeat it on every page.
+ * Rendered inside the page frame's `thead` (see the print page), so browsers
+ * repeat it — and reserve its height — at the top of every printed page.
  */
 export function Letterhead({
   profile,

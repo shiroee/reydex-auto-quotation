@@ -1,9 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import {
+  LuFileText,
+  LuLayoutTemplate,
+  LuPackage,
+  LuPlus,
+  LuUsers,
+} from "react-icons/lu";
 
-import { ReydexMark } from "@/components/brand/reydex-mark";
+import { AppHeader } from "@/components/app-header";
 import { requireSession } from "@/lib/auth/session";
-import { brandLogo, COMPANY_NAME } from "@/lib/brand";
+import { COMPANY_NAME } from "@/lib/brand";
 
 import { signOut } from "@/app/login/actions";
 
@@ -16,6 +23,34 @@ export const metadata: Metadata = {
 // Session-dependent, so never prerendered.
 export const dynamic = "force-dynamic";
 
+/** The four things kept here, each with what it is for. */
+const DESTINATIONS = [
+  {
+    href: "/quotations",
+    label: "Quotations",
+    hint: "Everything raised so far",
+    Icon: LuFileText,
+  },
+  {
+    href: "/customers",
+    label: "Customers",
+    hint: "Who quotations are addressed to",
+    Icon: LuUsers,
+  },
+  {
+    href: "/quotation-types",
+    label: "Quotation types",
+    hint: "Layout, letter body and terms",
+    Icon: LuLayoutTemplate,
+  },
+  {
+    href: "/items",
+    label: "Items",
+    hint: "The catalogue and its prices",
+    Icon: LuPackage,
+  },
+] as const;
+
 export default async function DashboardPage() {
   const session = await requireSession();
   const { user } = session;
@@ -23,46 +58,57 @@ export default async function DashboardPage() {
 
   return (
     <main className="reydex-auth-surface flex flex-1 flex-col">
-      <header className="flex items-center justify-between gap-4 border-b border-gold-500/10 px-5 py-4 sm:px-8">
-        <div className="flex items-center gap-3">
-          {/* The lockup carries the wordmark, so no separate REYDEX text here. */}
-          <ReydexMark logo={brandLogo} height={38} priority />
-          {!brandLogo ? (
-            <span className="text-sm font-semibold tracking-[0.13em] text-gold-200">
-              REYDEX
-            </span>
-          ) : null}
-        </div>
+      <AppHeader>
         <form action={signOut}>
           <SignOutSubmit />
         </form>
-      </header>
+      </AppHeader>
 
       <div className="flex flex-1 items-center justify-center px-5 py-16 sm:px-8">
-        <div className="reydex-card w-full max-w-lg rounded-2xl p-7 text-center backdrop-blur-xl sm:p-9">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-500/70">
-            Signed in
-          </p>
-          <h1 className="mt-3 text-2xl font-semibold tracking-tight text-gold-100">
-            Welcome, {displayName}
-          </h1>
-          <p className="mt-3 text-sm leading-relaxed text-gold-100/55">
-            Your {COMPANY_NAME} account is authenticated.
-          </p>
+        <div className="w-full max-w-2xl">
+          <div className="reydex-card rounded-2xl p-7 text-center backdrop-blur-xl sm:p-9">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-500/70">
+              Signed in
+            </p>
+            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-gold-100">
+              Welcome, {displayName}
+            </h1>
+            <p className="mt-3 text-sm leading-relaxed text-gold-100/55">
+              Your {COMPANY_NAME} account is authenticated.
+            </p>
 
-          <div className="mt-7 flex flex-wrap justify-center gap-3">
-            <Link
-              href="/quotations/new"
-              className="reydex-submit inline-flex h-10 items-center rounded-lg px-5 text-sm font-semibold"
-            >
-              New quotation
-            </Link>
-            <Link
-              href="/quotations"
-              className="inline-flex h-10 items-center rounded-lg border border-gold-500/25 px-5 text-sm font-medium text-gold-100/80 transition-colors hover:border-gold-400/45 hover:text-gold-100"
-            >
-              All quotations
-            </Link>
+            <div className="mt-7 flex justify-center">
+              <Link
+                href="/quotations/new"
+                className="reydex-submit inline-flex h-10 items-center gap-1.5 rounded-lg px-5 text-sm font-semibold"
+              >
+                <LuPlus aria-hidden className="size-4" />
+                New quotation
+              </Link>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {DESTINATIONS.map(({ href, label, hint, Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                className="reydex-card flex items-center gap-3.5 rounded-xl px-4 py-3.5 transition-colors hover:border-gold-400/35"
+              >
+                <Icon
+                  aria-hidden
+                  className="size-5 shrink-0 text-gold-300/80"
+                />
+                <span className="flex min-w-0 flex-col">
+                  <span className="text-sm font-semibold text-gold-100/90">
+                    {label}
+                  </span>
+                  <span className="truncate text-xs text-gold-100/40">
+                    {hint}
+                  </span>
+                </span>
+              </Link>
+            ))}
           </div>
         </div>
       </div>

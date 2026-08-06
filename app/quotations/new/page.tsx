@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
-import { ReydexMark } from "@/components/brand/reydex-mark";
+import { AppHeader } from "@/components/app-header";
 import { db } from "@/db";
 import { requireSession } from "@/lib/auth/session";
-import { brandLogo } from "@/lib/brand";
 import {
   listCustomerOptions,
   listPresetOptions,
@@ -30,17 +28,13 @@ export default async function NewQuotationPage() {
 
   return (
     <main className="reydex-auth-surface flex flex-1 flex-col">
-      <header className="flex items-center justify-between gap-4 border-b border-gold-500/10 px-5 py-4 sm:px-8">
-        <Link href="/quotations" className="flex items-center gap-3">
-          <ReydexMark logo={brandLogo} height={34} priority />
-        </Link>
-        <h1 className="text-sm font-semibold uppercase tracking-[0.18em] text-gold-200">
-          New quotation
-        </h1>
-      </header>
+      <AppHeader />
 
       <div className="flex-1 px-5 py-8 sm:px-8">
         <div className="mx-auto w-full max-w-3xl">
+          <h1 className="mb-6 text-sm font-semibold uppercase tracking-[0.18em] text-gold-200">
+            New quotation
+          </h1>
           {customers.length === 0 || variants.length === 0 ? (
             <div className="reydex-card rounded-2xl p-8 text-center">
               <p className="text-gold-100/70">

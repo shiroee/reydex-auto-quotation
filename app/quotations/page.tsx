@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LuPlus } from "react-icons/lu";
 
-import { ReydexMark } from "@/components/brand/reydex-mark";
+import { AppHeader } from "@/components/app-header";
 import { db } from "@/db";
 import { requireSession } from "@/lib/auth/session";
-import { brandLogo } from "@/lib/brand";
 import { formatPeso } from "@/lib/quotations/money";
+import { normalizeSearch, SEARCH_PARAM } from "@/lib/quotations/search";
 import { listQuotations } from "@/lib/quotations/service";
+
+import { QuotationsSearch } from "./quotations-search";
 
 export const metadata: Metadata = { title: "Quotations" };
 
@@ -17,44 +20,78 @@ const TEMPLATE_LABEL: Record<string, string> = {
   service_proposal: "Service proposal",
 };
 
-export default async function QuotationsPage() {
+export default async function QuotationsPage(props: PageProps<"/quotations">) {
   await requireSession();
 
-  const rows = await listQuotations(db);
+  const term = normalizeSearch((await props.searchParams)[SEARCH_PARAM]);
+  const rows = await listQuotations(db, { search: term });
 
   return (
     <main className="reydex-auth-surface flex flex-1 flex-col">
-      <header className="flex items-center justify-between gap-4 border-b border-gold-500/10 px-5 py-4 sm:px-8">
-        <Link href="/dashboard" className="flex items-center gap-3">
-          <ReydexMark logo={brandLogo} height={34} priority />
+      <AppHeader>
+        <Link
+          href="/quotations/new"
+          className="reydex-submit inline-flex h-9 items-center gap-1.5 rounded-lg px-3.5 text-sm font-semibold"
+        >
+          <LuPlus aria-hidden className="size-4" />
+          New quotation
         </Link>
-        <div className="flex items-center gap-5">
-          <h1 className="text-sm font-semibold uppercase tracking-[0.18em] text-gold-200">
-            Quotations
-          </h1>
-          <Link
-            href="/quotations/new"
-            className="reydex-submit inline-flex h-9 items-center rounded-lg px-3.5 text-sm font-semibold"
-          >
-            New quotation
-          </Link>
-        </div>
-      </header>
+      </AppHeader>
 
       <div className="flex-1 px-5 py-10 sm:px-8">
-        <div className="mx-auto w-full max-w-4xl">
+        <div className="mx-auto w-full max-w-5xl">
+          <QuotationsSearch term={term} />
+
+          {/*
+           * `role="status"` on the result line and on the empty card, so a
+           * search submitted from the keyboard is announced without focus
+           * having to move into the results.
+           */}
+          {term && rows.length > 0 ? (
+            <p className="mb-3 text-xs text-gold-100/45" role="status">
+              {rows.length} {rows.length === 1 ? "match" : "matches"} for “
+              {term}”
+            </p>
+          ) : null}
+
           {rows.length === 0 ? (
-            <div className="reydex-card rounded-2xl p-8 text-center">
-              <p className="text-gold-100/70">No quotations yet.</p>
-              <p className="mt-2 text-sm text-gold-100/40">
-                Create one with{" "}
-                <Link href="/quotations/new" className="text-gold-300 underline">
-                  New quotation
-                </Link>
-                , or run{" "}
-                <code className="text-gold-300">npm run db:seed-samples</code> to
-                load the three samples.
-              </p>
+            <div
+              className="reydex-card rounded-2xl p-8 text-center"
+              role={term ? "status" : undefined}
+            >
+              {term ? (
+                <>
+                  <p className="text-gold-100/70">
+                    No quotations match “{term}”.
+                  </p>
+                  <p className="mt-2 text-sm text-gold-100/40">
+                    Searches cover the reference number, customer name and
+                    subject.{" "}
+                    <Link href="/quotations" className="text-gold-300 underline">
+                      Show all quotations
+                    </Link>
+                    .
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-gold-100/70">No quotations yet.</p>
+                  <p className="mt-2 text-sm text-gold-100/40">
+                    Create one with{" "}
+                    <Link
+                      href="/quotations/new"
+                      className="text-gold-300 underline"
+                    >
+                      New quotation
+                    </Link>
+                    , or run{" "}
+                    <code className="text-gold-300">
+                      npm run db:seed-samples
+                    </code>{" "}
+                    to load the three samples.
+                  </p>
+                </>
+              )}
             </div>
           ) : (
             <div className="reydex-card overflow-hidden rounded-2xl">
@@ -63,6 +100,7 @@ export default async function QuotationsPage() {
                   <tr>
                     <th className="px-4 py-3 font-medium">Ref. No.</th>
                     <th className="px-4 py-3 font-medium">Customer</th>
+                    <th className="px-4 py-3 font-medium">Subject</th>
                     <th className="px-4 py-3 font-medium">Type</th>
                     <th className="px-4 py-3 font-medium">Date</th>
                     <th className="px-4 py-3 text-right font-medium">Total</th>
@@ -80,6 +118,19 @@ export default async function QuotationsPage() {
                       </td>
                       <td className="px-4 py-3 text-gold-100/85">
                         {row.customerName}
+                      </td>
+                      {/*
+                       * Subjects run to a full sentence, so the cell is clamped
+                       * and the whole line kept in `title` — otherwise one long
+                       * subject stretches the table past the card.
+                       */}
+                      <td className="px-4 py-3 text-gold-100/70">
+                        <span
+                          className="block max-w-[16rem] truncate"
+                          title={row.subject}
+                        >
+                          {row.subject}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-gold-100/55">
                         {TEMPLATE_LABEL[row.template] ?? row.template}

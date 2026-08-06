@@ -15,6 +15,7 @@ import {
   type ScopeSection,
 } from "@/db/schema";
 
+import { todayInQuoteZone } from "./dates";
 import { normalizeSearch, toContainsPattern } from "./search";
 
 /**
@@ -119,7 +120,7 @@ export async function createQuotation(
       .where(eq(companyProfile.slug, "reydex"))
       .limit(1);
 
-    const quoteDate = input.quoteDate ?? new Date().toISOString().slice(0, 10);
+    const quoteDate = input.quoteDate ?? todayInQuoteZone();
     const template = input.template ?? preset?.template ?? "supply";
     const o = input.overrides ?? {};
 
@@ -290,6 +291,187 @@ export async function getQuotationForPrint(db: QuotationDb, id: string) {
 export type PrintableQuotation = NonNullable<
   Awaited<ReturnType<typeof getQuotationForPrint>>
 >;
+
+/** Recomputes `total_amount` from the line items, the way `createQuotation` does. */
+async function recalculateTotal(tx: Tx, quotationId: string) {
+  await tx
+    .update(quotations)
+    .set({
+      totalAmount: sql`(
+        SELECT coalesce(sum(${quotationItems.lineTotal}), 0)
+        FROM ${quotationItems}
+        WHERE ${quotationItems.quotationId} = ${quotationId}
+      )`,
+      updatedAt: sql`now()`,
+    })
+    .where(eq(quotations.id, quotationId));
+}
+
+export type DuplicateQuotationResult =
+  | { ok: true; id: string; quoteNo: string }
+  | { ok: false; reason: "not_found" };
+
+/**
+ * Copies a quotation under a new reference and date.
+ *
+ * This is how a quote gets re-issued: the wording, terms, items and prices are
+ * the ones that were quoted, and only the date and the reference move. Nothing
+ * is re-read from the catalogue, so a price change since does not silently
+ * restate the copy — that is the whole point of the snapshot in
+ * `quotation_items`.
+ *
+ * The copy starts as a fresh draft: `status` back to `draft` and `sent_at` null,
+ * because the copy has not been sent even if its source was.
+ */
+export async function duplicateQuotation(
+  db: QuotationDb,
+  id: string,
+  {
+    quoteDate,
+    preparedByUserId,
+  }: { quoteDate?: string; preparedByUserId?: string | null } = {},
+): Promise<DuplicateQuotationResult> {
+  return db.transaction(async (tx) => {
+    const [source] = await tx
+      .select()
+      .from(quotations)
+      .where(eq(quotations.id, id))
+      .limit(1);
+
+    if (!source) return { ok: false, reason: "not_found" };
+
+    const date = quoteDate ?? todayInQuoteZone();
+
+    // The year comes from the new date, so a copy raised in January of the next
+    // year is numbered in that year.
+    const quoteNo = await nextQuoteNo(tx, Number(date.slice(0, 4)));
+
+    const [copy] = await tx
+      .insert(quotations)
+      .values({
+        quoteNo,
+        customerId: source.customerId,
+        template: source.template,
+        subject: source.subject,
+        quoteDate: date,
+        validityDays: source.validityDays,
+        currency: source.currency,
+        status: "draft",
+        attentionTo: source.attentionTo,
+        salutation: source.salutation,
+        introParagraph: source.introParagraph,
+        closingParagraph: source.closingParagraph,
+        paymentTerms: source.paymentTerms,
+        deliveryTerms: source.deliveryTerms,
+        warrantyTerms: source.warrantyTerms,
+        mobilization: source.mobilization,
+        showBankDetails: source.showBankDetails,
+        scopeOfWorks: source.scopeOfWorks,
+        notes: source.notes,
+        // Whoever raised the copy owns it; falls back to the original's author.
+        preparedByUserId: preparedByUserId ?? source.preparedByUserId,
+        signatoryName: source.signatoryName,
+        signatoryTitle: source.signatoryTitle,
+      })
+      .returning({ id: quotations.id });
+
+    /*
+     * Columns listed explicitly rather than spread from a `select()`: `lineTotal`
+     * is a generated column, and Postgres rejects an insert that supplies one.
+     */
+    const items = await tx
+      .select({
+        position: quotationItems.position,
+        sectionTitle: quotationItems.sectionTitle,
+        productId: quotationItems.productId,
+        name: quotationItems.name,
+        serviceKind: quotationItems.serviceKind,
+        description: quotationItems.description,
+        specs: quotationItems.specs,
+        capacityLabel: quotationItems.capacityLabel,
+        unitLabel: quotationItems.unitLabel,
+        quantity: quotationItems.quantity,
+        unitPrice: quotationItems.unitPrice,
+      })
+      .from(quotationItems)
+      .where(eq(quotationItems.quotationId, id))
+      .orderBy(asc(quotationItems.position));
+
+    if (items.length > 0) {
+      await tx
+        .insert(quotationItems)
+        .values(items.map((item) => ({ ...item, quotationId: copy.id })));
+    }
+
+    const exclusions = await tx
+      .select({
+        position: quotationExclusions.position,
+        text: quotationExclusions.text,
+      })
+      .from(quotationExclusions)
+      .where(eq(quotationExclusions.quotationId, id))
+      .orderBy(asc(quotationExclusions.position));
+
+    if (exclusions.length > 0) {
+      await tx
+        .insert(quotationExclusions)
+        .values(exclusions.map((row) => ({ ...row, quotationId: copy.id })));
+    }
+
+    // Summed by Postgres rather than copied, so the total cannot disagree with
+    // the lines that were actually inserted.
+    await recalculateTotal(tx, copy.id);
+
+    return { ok: true, id: copy.id, quoteNo };
+  });
+}
+
+/**
+ * Changes the date on an existing quotation. Returns false when the row is gone.
+ *
+ * The reference number is deliberately left alone even when the year changes: it
+ * is the identifier the client already has in their inbox, and renumbering a
+ * document that has gone out is worse than a reference whose year no longer
+ * matches its date. Use `duplicateQuotation` for a genuinely new document.
+ */
+export async function setQuotationDate(
+  db: QuotationDb,
+  id: string,
+  quoteDate: string,
+): Promise<boolean> {
+  const updated = await db
+    .update(quotations)
+    .set({ quoteDate, updatedAt: sql`now()` })
+    .where(eq(quotations.id, id))
+    .returning({ id: quotations.id });
+
+  return updated.length > 0;
+}
+
+export type DeleteQuotationResult =
+  | { ok: true; quoteNo: string }
+  | { ok: false; reason: "not_found" };
+
+/**
+ * Deletes a quotation, with its items and exclusions (both `ON DELETE CASCADE`).
+ *
+ * Nothing references a quotation, so there is nothing to guard against. Note
+ * that the reference number is not recycled: it comes from a global sequence, so
+ * deleting RDX-2026-0004 leaves a gap rather than freeing the number.
+ */
+export async function deleteQuotation(
+  db: QuotationDb,
+  id: string,
+): Promise<DeleteQuotationResult> {
+  const deleted = await db
+    .delete(quotations)
+    .where(eq(quotations.id, id))
+    .returning({ quoteNo: quotations.quoteNo });
+
+  if (deleted.length === 0) return { ok: false, reason: "not_found" };
+
+  return { ok: true, quoteNo: deleted[0].quoteNo };
+}
 
 export type ListQuotationsOptions = {
   /**

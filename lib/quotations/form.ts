@@ -5,6 +5,7 @@
  * shared between the Server Action and any client-side pre-checks.
  */
 
+import { isRealDate } from "./dates";
 import type { CreateQuotationInput, QuotationItemInput } from "./service";
 
 /** Field names, kept in one place so the form and parser cannot drift apart. */
@@ -24,6 +25,17 @@ export const FIELD = {
   itemVariant: "item.variant",
   itemQuantity: "item.quantity",
   itemSection: "item.section",
+} as const;
+
+/**
+ * Field names for the re-issue forms (copy, and change the date).
+ *
+ * Here rather than beside their Server Actions because a `"use server"` file may
+ * only export async functions — exporting a constant from one is a build error.
+ */
+export const REISSUE_FIELD = {
+  id: "id",
+  quoteDate: "quoteDate",
 } as const;
 
 export type QuotationFormErrors = {
@@ -85,12 +97,10 @@ export function decodeVariant(value: string): {
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-function isRealDate(value: string): boolean {
-  if (!ISO_DATE.test(value)) return false;
-  const date = new Date(`${value}T00:00:00Z`);
-  return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
+/** Shared with the re-issue actions; see `./dates`. */
+export function isQuotationId(value: unknown): value is string {
+  return typeof value === "string" && UUID.test(value);
 }
 
 function text(form: FormData, name: string): string {

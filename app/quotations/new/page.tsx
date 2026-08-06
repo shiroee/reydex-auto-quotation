@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { AppHeader } from "@/components/app-header";
 import { db } from "@/db";
 import { requireSession } from "@/lib/auth/session";
+import { todayInQuoteZone } from "@/lib/quotations/dates";
 import {
   listCustomerOptions,
   listPresetOptions,
@@ -24,7 +25,9 @@ export default async function NewQuotationPage() {
     listPriceVariants(db),
   ]);
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Manila, not UTC: `toISOString()` is a day behind for the whole Philippine
+  // morning, which would date a quotation raised before 8 a.m. as yesterday.
+  const today = todayInQuoteZone();
 
   return (
     <main className="reydex-auth-surface flex flex-1 flex-col">

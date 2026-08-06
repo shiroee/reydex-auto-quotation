@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import * as schema from "@/db/schema";
@@ -14,6 +14,8 @@ import {
   quotations,
   type ScopeSection,
 } from "@/db/schema";
+
+import { normalizeSearch, toContainsPattern } from "./search";
 
 /**
  * The database handle is passed in rather than imported so these functions can
@@ -289,8 +291,23 @@ export type PrintableQuotation = NonNullable<
   Awaited<ReturnType<typeof getQuotationForPrint>>
 >;
 
+export type ListQuotationsOptions = {
+  /**
+   * Free text matched case-insensitively against the reference number, the
+   * customer name and the subject. Blank or omitted lists everything.
+   */
+  search?: string;
+  limit?: number;
+};
+
 /** Newest first, for the index page. */
-export async function listQuotations(db: QuotationDb, limit = 50) {
+export async function listQuotations(
+  db: QuotationDb,
+  { search, limit = 50 }: ListQuotationsOptions = {},
+) {
+  const term = normalizeSearch(search);
+  const pattern = toContainsPattern(term);
+
   return db
     .select({
       id: quotations.id,
@@ -304,6 +321,16 @@ export async function listQuotations(db: QuotationDb, limit = 50) {
     })
     .from(quotations)
     .innerJoin(customers, eq(customers.id, quotations.customerId))
+    // `undefined` rather than a tautology, so the unfiltered query is unchanged.
+    .where(
+      term
+        ? or(
+            ilike(quotations.quoteNo, pattern),
+            ilike(customers.name, pattern),
+            ilike(quotations.subject, pattern),
+          )
+        : undefined,
+    )
     .orderBy(sql`${quotations.quoteDate} DESC, ${quotations.createdAt} DESC`)
     .limit(limit);
 }

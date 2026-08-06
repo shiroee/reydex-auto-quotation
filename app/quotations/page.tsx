@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { LuPlus } from "react-icons/lu";
+import { LuCopy, LuFileText, LuPencil, LuPlus } from "react-icons/lu";
 
 import { AppHeader } from "@/components/app-header";
+import { DeleteRowButton } from "@/components/delete-row-button";
 import { db } from "@/db";
 import { requireSession } from "@/lib/auth/session";
 import { formatPeso } from "@/lib/quotations/money";
 import { normalizeSearch, SEARCH_PARAM } from "@/lib/quotations/search";
 import { listQuotations } from "@/lib/quotations/service";
 
+import { deleteQuotationAction } from "./actions";
 import { QuotationsSearch } from "./quotations-search";
 
 export const metadata: Metadata = { title: "Quotations" };
@@ -141,13 +143,48 @@ export default async function QuotationsPage(props: PageProps<"/quotations">) {
                       <td className="px-4 py-3 text-right text-gold-100/85">
                         {formatPeso(row.totalAmount)}
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <Link
-                          href={`/quotations/${row.id}/print`}
-                          className="text-xs font-medium text-gold-300 underline-offset-2 hover:underline"
-                        >
-                          Open
-                        </Link>
+                      <td className="px-4 py-3">
+                        <div className="flex items-start justify-end gap-4">
+                          <Link
+                            href={`/quotations/${row.id}/print`}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-gold-300 underline-offset-2 hover:underline"
+                          >
+                            <LuFileText aria-hidden className="size-3.5" />
+                            Open
+                          </Link>
+                          <Link
+                            href={`/quotations/${row.id}/edit`}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-gold-100/60 underline-offset-2 transition-colors hover:text-gold-100 hover:underline"
+                          >
+                            <LuPencil aria-hidden className="size-3.5" />
+                            Edit
+                          </Link>
+                          {/*
+                           * Copying and re-dating both live on one page rather
+                           * than as inline row controls: they are easy to confuse
+                           * — one makes a new document, the other rewrites a sent
+                           * one — and the page has room to say which is which.
+                           */}
+                          <Link
+                            href={`/quotations/${row.id}/reissue`}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-gold-100/60 underline-offset-2 transition-colors hover:text-gold-100 hover:underline"
+                          >
+                            <LuCopy aria-hidden className="size-3.5" />
+                            Copy / date
+                          </Link>
+                          {/*
+                           * Nothing references a quotation and its lines cascade,
+                           * so there is nothing to block — but the reference comes
+                           * from a global sequence, so the number is retired
+                           * rather than freed.
+                           */}
+                          <DeleteRowButton
+                            action={deleteQuotationAction}
+                            id={row.id}
+                            name={row.quoteNo}
+                            warning={`${row.quoteNo} will not be reused.`}
+                          />
+                        </div>
                       </td>
                     </tr>
                   ))}

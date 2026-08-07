@@ -29,13 +29,17 @@ const SECTIONS = [
  * rather than passed in by each page — one prop per page is one prop per page to
  * forget, and a nav that quietly highlights the wrong entry is worse than none.
  */
-export function AppNav() {
+export function AppNav({ className }: { className?: string }) {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Main" className="min-w-0">
-      {/* Scrolls rather than wraps on a narrow screen, so the header keeps one line. */}
-      <ul className="flex items-center gap-1 overflow-x-auto">
+    <nav aria-label="Main" className={`min-w-0 ${className ?? ""}`}>
+      {/*
+       * Scrolls rather than wraps on a narrow screen, so the navigation stays one
+       * line however little room it has. `snap-x` so a swipe settles with a link
+       * at the left edge instead of half of one.
+       */}
+      <ul className="reydex-rail flex snap-x snap-mandatory items-center gap-1 overflow-x-auto">
         {SECTIONS.map((section) => {
           // `/customers` is current on `/customers/new` too, but `/customersfoo`
           // is a different section, hence the explicit separator.
@@ -46,14 +50,15 @@ export function AppNav() {
           const { Icon } = section;
 
           return (
-            <li key={section.href} className="shrink-0">
+            <li key={section.href} className="shrink-0 snap-start">
               <Link
                 href={section.href}
                 aria-current={isCurrent ? "page" : undefined}
+                /* `h-9` on a phone: 32px is a small thing to hit with a thumb. */
                 className={
                   isCurrent
-                    ? "inline-flex h-8 items-center gap-2 rounded-lg bg-gold-500/12 px-3 text-xs font-semibold uppercase tracking-[0.12em] text-gold-200"
-                    : "inline-flex h-8 items-center gap-2 rounded-lg px-3 text-xs font-medium uppercase tracking-[0.12em] text-gold-100/50 transition-colors hover:bg-gold-500/6 hover:text-gold-100"
+                    ? "inline-flex h-9 items-center gap-2 rounded-lg bg-gold-500/12 px-3 text-xs font-semibold uppercase tracking-[0.12em] text-gold-200 md:h-8"
+                    : "inline-flex h-9 items-center gap-2 rounded-lg px-3 text-xs font-medium uppercase tracking-[0.12em] text-gold-100/50 transition-colors hover:bg-gold-500/6 hover:text-gold-100 md:h-8"
                 }
               >
                 {/* Decorative: the label next to it already names the section. */}

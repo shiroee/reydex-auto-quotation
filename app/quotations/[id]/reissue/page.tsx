@@ -103,7 +103,7 @@ export default async function ReissueQuotationPage({
             <ReDateForm id={quotation.id} quoteDate={quotation.quoteDate} />
           </section>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
             <Link
               href="/quotations"
               className="text-sm text-gold-100/50 underline-offset-2 hover:text-gold-100 hover:underline"

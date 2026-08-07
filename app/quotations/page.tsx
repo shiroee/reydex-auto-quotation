@@ -4,11 +4,17 @@ import { LuCopy, LuFileText, LuPencil, LuPlus } from "react-icons/lu";
 
 import { AppHeader } from "@/components/app-header";
 import { DeleteRowButton } from "@/components/delete-row-button";
+import { RecordCard, RecordList } from "@/components/record-list";
+import {
+  RowAction,
+  RowActions,
+  type RowActionsAlign,
+} from "@/components/row-actions";
 import { db } from "@/db";
 import { requireSession } from "@/lib/auth/session";
 import { formatPeso } from "@/lib/quotations/money";
 import { normalizeSearch, SEARCH_PARAM } from "@/lib/quotations/search";
-import { listQuotations } from "@/lib/quotations/service";
+import { listQuotations, type QuotationListRow } from "@/lib/quotations/service";
 
 import { deleteQuotationAction } from "./actions";
 import { QuotationsSearch } from "./quotations-search";
@@ -22,6 +28,50 @@ const TEMPLATE_LABEL: Record<string, string> = {
   service_proposal: "Service proposal",
 };
 
+/** One row's controls, drawn once in the table cell and once in the phone card. */
+function Controls({
+  row,
+  align,
+}: {
+  row: QuotationListRow;
+  align?: RowActionsAlign;
+}) {
+  return (
+    <RowActions align={align}>
+      <RowAction
+        href={`/quotations/${row.id}/print`}
+        icon={LuFileText}
+        tone="primary"
+      >
+        Open
+      </RowAction>
+      <RowAction href={`/quotations/${row.id}/edit`} icon={LuPencil}>
+        Edit
+      </RowAction>
+      {/*
+       * Copying and re-dating both live on one page rather than as inline row
+       * controls: they are easy to confuse — one makes a new document, the other
+       * rewrites a sent one — and the page has room to say which is which.
+       */}
+      <RowAction href={`/quotations/${row.id}/reissue`} icon={LuCopy}>
+        Copy / date
+      </RowAction>
+      {/*
+       * Nothing references a quotation and its lines cascade, so there is
+       * nothing to block — but the reference comes from a global sequence, so the
+       * number is retired rather than freed.
+       */}
+      <DeleteRowButton
+        action={deleteQuotationAction}
+        id={row.id}
+        name={row.quoteNo}
+        warning={`${row.quoteNo} will not be reused.`}
+        align={align}
+      />
+    </RowActions>
+  );
+}
+
 export default async function QuotationsPage(props: PageProps<"/quotations">) {
   await requireSession();
 
@@ -33,14 +83,15 @@ export default async function QuotationsPage(props: PageProps<"/quotations">) {
       <AppHeader>
         <Link
           href="/quotations/new"
-          className="reydex-submit inline-flex h-9 items-center gap-1.5 rounded-lg px-3.5 text-sm font-semibold"
+          className="reydex-submit inline-flex h-10 items-center gap-1.5 rounded-lg px-3.5 text-sm font-semibold sm:h-9"
         >
           <LuPlus aria-hidden className="size-4" />
-          New quotation
+          <span className="sm:hidden">New</span>
+          <span className="hidden sm:inline">New quotation</span>
         </Link>
       </AppHeader>
 
-      <div className="flex-1 px-5 py-10 sm:px-8">
+      <div className="flex-1 px-5 py-8 sm:px-8 sm:py-10">
         <div className="mx-auto w-full max-w-5xl">
           <QuotationsSearch term={term} />
 
@@ -96,101 +147,94 @@ export default async function QuotationsPage(props: PageProps<"/quotations">) {
               )}
             </div>
           ) : (
-            <div className="reydex-card overflow-hidden rounded-2xl">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b border-gold-500/15 text-xs uppercase tracking-wider text-gold-100/45">
-                  <tr>
-                    <th className="px-4 py-3 font-medium">Ref. No.</th>
-                    <th className="px-4 py-3 font-medium">Customer</th>
-                    <th className="px-4 py-3 font-medium">Subject</th>
-                    <th className="px-4 py-3 font-medium">Type</th>
-                    <th className="px-4 py-3 font-medium">Date</th>
-                    <th className="px-4 py-3 text-right font-medium">Total</th>
-                    <th className="px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => (
-                    <tr
-                      key={row.id}
-                      className="border-b border-gold-500/8 last:border-0"
-                    >
-                      <td className="px-4 py-3 font-mono text-xs text-gold-200">
-                        {row.quoteNo}
-                      </td>
-                      <td className="px-4 py-3 text-gold-100/85">
-                        {row.customerName}
-                      </td>
-                      {/*
-                       * Subjects run to a full sentence, so the cell is clamped
-                       * and the whole line kept in `title` — otherwise one long
-                       * subject stretches the table past the card.
-                       */}
-                      <td className="px-4 py-3 text-gold-100/70">
-                        <span
-                          className="block max-w-[16rem] truncate"
-                          title={row.subject}
-                        >
-                          {row.subject}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-gold-100/55">
-                        {TEMPLATE_LABEL[row.template] ?? row.template}
-                      </td>
-                      <td className="px-4 py-3 text-gold-100/55">
-                        {row.quoteDate}
-                      </td>
-                      <td className="px-4 py-3 text-right text-gold-100/85">
-                        {formatPeso(row.totalAmount)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-start justify-end gap-4">
-                          <Link
-                            href={`/quotations/${row.id}/print`}
-                            className="inline-flex items-center gap-1.5 text-xs font-medium text-gold-300 underline-offset-2 hover:underline"
-                          >
-                            <LuFileText aria-hidden className="size-3.5" />
-                            Open
-                          </Link>
-                          <Link
-                            href={`/quotations/${row.id}/edit`}
-                            className="inline-flex items-center gap-1.5 text-xs font-medium text-gold-100/60 underline-offset-2 transition-colors hover:text-gold-100 hover:underline"
-                          >
-                            <LuPencil aria-hidden className="size-3.5" />
-                            Edit
-                          </Link>
-                          {/*
-                           * Copying and re-dating both live on one page rather
-                           * than as inline row controls: they are easy to confuse
-                           * — one makes a new document, the other rewrites a sent
-                           * one — and the page has room to say which is which.
-                           */}
-                          <Link
-                            href={`/quotations/${row.id}/reissue`}
-                            className="inline-flex items-center gap-1.5 text-xs font-medium text-gold-100/60 underline-offset-2 transition-colors hover:text-gold-100 hover:underline"
-                          >
-                            <LuCopy aria-hidden className="size-3.5" />
-                            Copy / date
-                          </Link>
-                          {/*
-                           * Nothing references a quotation and its lines cascade,
-                           * so there is nothing to block — but the reference comes
-                           * from a global sequence, so the number is retired
-                           * rather than freed.
-                           */}
-                          <DeleteRowButton
-                            action={deleteQuotationAction}
-                            id={row.id}
-                            name={row.quoteNo}
-                            warning={`${row.quoteNo} will not be reused.`}
-                          />
-                        </div>
-                      </td>
+            <>
+              {/* Cards on a phone; the table from `md` up. */}
+              <RecordList>
+                {rows.map((row) => (
+                  <RecordCard
+                    key={row.id}
+                    eyebrow={row.quoteNo}
+                    title={row.customerName}
+                    subtitle={row.subject}
+                    facts={[
+                      {
+                        label: "Type",
+                        value: TEMPLATE_LABEL[row.template] ?? row.template,
+                      },
+                      { label: "Date", value: row.quoteDate },
+                      {
+                        label: "Total",
+                        value: formatPeso(row.totalAmount),
+                        strong: true,
+                      },
+                    ]}
+                    actions={<Controls row={row} />}
+                  />
+                ))}
+              </RecordList>
+
+              {/*
+               * `overflow-x-auto` rather than `hidden`: seven columns still run
+               * out of room somewhere above `md`, and scrolling the table is
+               * better than clipping the column the row controls sit in.
+               */}
+              <div className="reydex-card hidden overflow-x-auto rounded-2xl md:block">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-gold-500/15 text-xs uppercase tracking-wider text-gold-100/45">
+                    <tr>
+                      <th className="px-4 py-3 font-medium">Ref. No.</th>
+                      <th className="px-4 py-3 font-medium">Customer</th>
+                      <th className="px-4 py-3 font-medium">Subject</th>
+                      <th className="px-4 py-3 font-medium">Type</th>
+                      <th className="px-4 py-3 font-medium">Date</th>
+                      <th className="px-4 py-3 text-right font-medium">Total</th>
+                      <th className="px-4 py-3" />
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {rows.map((row) => (
+                      <tr
+                        key={row.id}
+                        className="border-b border-gold-500/8 last:border-0"
+                      >
+                        <td className="px-4 py-3 font-mono text-xs text-gold-200">
+                          {row.quoteNo}
+                        </td>
+                        <td className="px-4 py-3 text-gold-100/85">
+                          {row.customerName}
+                        </td>
+                        {/*
+                         * Subjects run to a full sentence, so the cell is clamped
+                         * and the whole line kept in `title` — otherwise one long
+                         * subject stretches the table past the card. The phone
+                         * card prints it in full instead.
+                         */}
+                        <td className="px-4 py-3 text-gold-100/70">
+                          <span
+                            className="block max-w-[16rem] truncate"
+                            title={row.subject}
+                          >
+                            {row.subject}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-gold-100/55">
+                          {TEMPLATE_LABEL[row.template] ?? row.template}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-gold-100/55">
+                          {row.quoteDate}
+                        </td>
+                        <td className="px-4 py-3 text-right whitespace-nowrap text-gold-100/85">
+                          {formatPeso(row.totalAmount)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Controls row={row} align="end" />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       </div>

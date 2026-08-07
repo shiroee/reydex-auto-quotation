@@ -265,8 +265,13 @@ export function ItemForm({ item }: { item?: ItemRecord }) {
                 key={row.key}
                 className="rounded-xl border border-gold-500/12 bg-ink-950/40 p-3.5"
               >
-                <div className="flex flex-wrap items-start gap-3">
-                  <div className="min-w-40 flex-1">
+                {/*
+                 * One line from `sm` up. On a phone the four controls do not fit
+                 * across, so the grid folds to two columns: service kind spans
+                 * both, then capacity and pounds, then price beside Remove.
+                 */}
+                <div className="grid grid-cols-2 items-start gap-2.5 sm:grid-cols-[minmax(0,1fr)_7rem_5rem_7rem_auto] sm:gap-3">
+                  <div className="col-span-2 min-w-0 sm:col-span-1">
                     <select
                       name={FIELD.variantServiceKind}
                       value={row.serviceKind}
@@ -285,49 +290,43 @@ export function ItemForm({ item }: { item?: ItemRecord }) {
                     </select>
                   </div>
 
-                  <div className="w-28">
-                    <input
-                      name={FIELD.variantCapacityLabel}
-                      value={row.capacityLabel}
-                      onChange={(event) =>
-                        updateRow(row.key, { capacityLabel: event.target.value })
-                      }
-                      placeholder="10 lbs"
-                      aria-label={`Capacity for price ${index + 1}`}
-                      aria-invalid={error ? "true" : undefined}
-                      className="reydex-field w-full rounded-lg px-3 py-2 text-sm text-gold-50 placeholder:text-gold-100/25"
-                    />
-                  </div>
+                  <input
+                    name={FIELD.variantCapacityLabel}
+                    value={row.capacityLabel}
+                    onChange={(event) =>
+                      updateRow(row.key, { capacityLabel: event.target.value })
+                    }
+                    placeholder="10 lbs"
+                    aria-label={`Capacity for price ${index + 1}`}
+                    aria-invalid={error ? "true" : undefined}
+                    className="reydex-field w-full min-w-0 rounded-lg px-3 py-2 text-sm text-gold-50 placeholder:text-gold-100/25"
+                  />
 
-                  <div className="w-20">
-                    <input
-                      name={FIELD.variantCapacityLbs}
-                      value={row.capacityLbs}
-                      onChange={(event) =>
-                        updateRow(row.key, { capacityLbs: event.target.value })
-                      }
-                      inputMode="decimal"
-                      placeholder="lbs"
-                      aria-label={`Capacity in pounds for price ${index + 1}`}
-                      aria-invalid={error ? "true" : undefined}
-                      className="reydex-field w-full rounded-lg px-3 py-2 text-sm text-gold-50 placeholder:text-gold-100/25"
-                    />
-                  </div>
+                  <input
+                    name={FIELD.variantCapacityLbs}
+                    value={row.capacityLbs}
+                    onChange={(event) =>
+                      updateRow(row.key, { capacityLbs: event.target.value })
+                    }
+                    inputMode="decimal"
+                    placeholder="lbs"
+                    aria-label={`Capacity in pounds for price ${index + 1}`}
+                    aria-invalid={error ? "true" : undefined}
+                    className="reydex-field w-full min-w-0 rounded-lg px-3 py-2 text-sm text-gold-50 placeholder:text-gold-100/25"
+                  />
 
-                  <div className="w-28">
-                    <input
-                      name={FIELD.variantUnitPrice}
-                      value={row.unitPrice}
-                      onChange={(event) =>
-                        updateRow(row.key, { unitPrice: event.target.value })
-                      }
-                      inputMode="decimal"
-                      placeholder="1200.00"
-                      aria-label={`Unit price for price ${index + 1}`}
-                      aria-invalid={error ? "true" : undefined}
-                      className="reydex-field w-full rounded-lg px-3 py-2 text-right text-sm tabular-nums text-gold-50 placeholder:text-gold-100/25"
-                    />
-                  </div>
+                  <input
+                    name={FIELD.variantUnitPrice}
+                    value={row.unitPrice}
+                    onChange={(event) =>
+                      updateRow(row.key, { unitPrice: event.target.value })
+                    }
+                    inputMode="decimal"
+                    placeholder="1200.00"
+                    aria-label={`Unit price for price ${index + 1}`}
+                    aria-invalid={error ? "true" : undefined}
+                    className="reydex-field w-full min-w-0 rounded-lg px-3 py-2 text-right text-sm tabular-nums text-gold-50 placeholder:text-gold-100/25"
+                  />
 
                   <button
                     type="button"
@@ -339,7 +338,7 @@ export function ItemForm({ item }: { item?: ItemRecord }) {
                       )
                     }
                     aria-label={`Remove price ${index + 1}`}
-                    className="mt-1 rounded-lg px-2 py-1.5 text-gold-100/40 transition-colors hover:bg-red-500/10 hover:text-red-300"
+                    className="justify-self-end rounded-lg px-2 py-2 text-gold-100/40 transition-colors hover:bg-red-500/10 hover:text-red-300 sm:mt-1 sm:py-1.5"
                   >
                     <LuX aria-hidden className="size-4" />
                   </button>
@@ -367,17 +366,23 @@ export function ItemForm({ item }: { item?: ItemRecord }) {
         </button>
       </section>
 
-      <div className="flex items-center justify-end gap-4">
+      {/*
+       * Stacked on a phone: the submit takes the full width rather than being a
+       * 100px target in the corner, with Cancel below it as a quiet link. Only
+       * the painted order changes — the markup keeps Cancel first, so tabbing
+       * reaches the way out before the commit on every screen size.
+       */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-4">
         <Link
           href="/items"
-          className="text-sm text-gold-100/50 underline-offset-2 hover:text-gold-100 hover:underline"
+          className="order-2 text-center text-sm text-gold-100/50 underline-offset-2 hover:text-gold-100 hover:underline sm:order-1"
         >
           Cancel
         </Link>
         <button
           type="submit"
           disabled={isPending}
-          className="reydex-submit inline-flex h-11 items-center justify-center rounded-lg px-6 text-sm font-semibold tracking-wide"
+          className="reydex-submit order-1 inline-flex h-11 w-full items-center justify-center rounded-lg px-6 text-sm font-semibold tracking-wide sm:order-2 sm:w-auto"
         >
           {isPending ? "Saving…" : isEdit ? "Save changes" : "Add item"}
         </button>

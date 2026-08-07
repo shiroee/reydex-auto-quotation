@@ -64,13 +64,14 @@ export default async function DashboardPage() {
         </form>
       </AppHeader>
 
-      <div className="flex flex-1 items-center justify-center px-5 py-16 sm:px-8">
+      <div className="flex flex-1 items-center justify-center px-5 py-10 sm:px-8 sm:py-16">
         <div className="w-full max-w-2xl">
-          <div className="reydex-card rounded-2xl p-7 text-center backdrop-blur-xl sm:p-9">
+          <div className="reydex-card rounded-2xl p-6 text-center backdrop-blur-xl sm:p-9">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-500/70">
               Signed in
             </p>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-gold-100">
+            {/* Wrappable: an email address has no space to break at on a phone. */}
+            <h1 className="mt-3 text-xl font-semibold tracking-tight wrap-break-word text-gold-100 sm:text-2xl">
               Welcome, {displayName}
             </h1>
             <p className="mt-3 text-sm leading-relaxed text-gold-100/55">

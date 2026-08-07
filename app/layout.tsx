@@ -34,7 +34,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      {/*
+       * `dvh` rather than `%`: on a phone the browser's own chrome grows and
+       * shrinks as you scroll, and the dynamic viewport unit is what keeps a
+       * full-height page — the sign-in surface, an empty listing — filling the
+       * screen at both sizes instead of leaving a band of background.
+       */}
+      <body className="flex min-h-dvh flex-col">{children}</body>
     </html>
   );
 }

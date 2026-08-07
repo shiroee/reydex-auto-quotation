@@ -228,17 +228,18 @@ export function QuotationForm({
         </div>
       </details>
 
-      <div className="flex items-center justify-end gap-4">
+      {/* Stacked on a phone, submit full-width — see the item form. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-4">
         <Link
           href="/quotations"
-          className="text-sm text-gold-100/50 underline-offset-2 hover:text-gold-100 hover:underline"
+          className="order-2 text-center text-sm text-gold-100/50 underline-offset-2 hover:text-gold-100 hover:underline sm:order-1"
         >
           Cancel
         </Link>
         <button
           type="submit"
           disabled={isPending}
-          className="reydex-submit inline-flex h-11 items-center justify-center rounded-lg px-6 text-sm font-semibold tracking-wide"
+          className="reydex-submit order-1 inline-flex h-11 w-full items-center justify-center rounded-lg px-6 text-sm font-semibold tracking-wide sm:order-2 sm:w-auto"
         >
           {isPending ? "Saving…" : "Save & open document"}
         </button>

@@ -556,6 +556,72 @@
   text-decoration: underline;
 }
 
+/* ---------- Screen preview on a phone ---------- */
+
+/*
+ * The sheet is 210mm wide by definition — that is the whole point of it — and a
+ * phone is about 100mm. Two things happen here:
+ *
+ * 1. The viewport scrolls sideways, so the sheet can be reached in full instead
+ *    of being clipped, and the app around it is not dragged along with it.
+ * 2. The sheet is scaled down to fit, so the document opens whole rather than
+ *    showing its left third. `zoom` rather than `transform: scale()`, because
+ *    `zoom` shrinks the room the sheet takes up as well as its drawing — a
+ *    transform would leave a 210mm hole in the scroll area with a small sheet
+ *    floating in it. Pinch to read; the browser's own zoom is untouched.
+ *
+ * `tan(atan2(a, b))` is how one length is divided by another in CSS, where plain
+ * division is not allowed. It is resolved on the unzoomed parent and inherited,
+ * so there is no question of the zoom feeding back into its own input. A browser
+ * without the trig functions leaves the custom property invalid, `zoom` falls
+ * back to its initial value of 1, and point 1 carries the page on its own —
+ * degraded to a sideways scroll rather than broken.
+ *
+ * `screen and`, because A4 is itself narrower than this breakpoint: without it,
+ * printing would scale the sheet down to a corner of the paper.
+ */
+@media screen and (max-width: 230mm) {
+  .q-viewport {
+    --q-gutter: 0.75rem;
+    --q-fit: tan(
+      atan2(calc(100vw - 2 * var(--q-gutter)), var(--q-sheet-width))
+    );
+
+    padding: 1rem var(--q-gutter) 2.5rem;
+    overflow-x: auto;
+  }
+
+  .q-sheet {
+    /* Never magnify: a tablet wider than the sheet shows it at its true size. */
+    zoom: min(1, var(--q-fit));
+  }
+
+  .q-toolbar {
+    width: auto;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 0.5rem 1rem;
+  }
+
+  /* Its own line — the note and two controls do not read across this width. */
+  .q-toolbar-note {
+    flex-basis: 100%;
+    margin-right: 0;
+  }
+
+  /* Thumb-sized, and in reading order: the way back first, then the action. */
+  .q-back-link,
+  .q-print-button {
+    min-height: 2.75rem;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .q-print-button {
+    margin-left: auto;
+  }
+}
+
 /* ---------- Print ---------- */
 
 @media print {

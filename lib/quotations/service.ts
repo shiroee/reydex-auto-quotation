@@ -713,3 +713,5 @@ export async function listQuotations(
     .orderBy(sql`${quotations.quoteDate} DESC, ${quotations.createdAt} DESC`)
     .limit(limit);
 }
+
+export type QuotationListRow = Awaited<ReturnType<typeof listQuotations>>[number];

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { recordActivity, toActor } from "@/lib/activity/service";
 import { db } from "@/db";
 import { requireSession } from "@/lib/auth/session";
 import {
@@ -34,7 +35,7 @@ export async function createCustomerAction(
   formData: FormData,
 ): Promise<CustomerFormState> {
   // Verified here as well as in the page: a Server Action is its own entry point.
-  await requireSession();
+  const session = await requireSession();
 
   const parsed = parseCustomerForm(formData);
 
@@ -43,7 +44,15 @@ export async function createCustomerAction(
   }
 
   try {
-    await createCustomer(db, parsed.input);
+    const { id } = await createCustomer(db, parsed.input);
+
+    await recordActivity(db, {
+      action: "create",
+      entity: "customer",
+      entityId: id,
+      label: parsed.input.name,
+      actor: toActor(session),
+    });
   } catch (cause) {
     console.error("[customers] create failed", cause);
     return {
@@ -61,7 +70,7 @@ export async function updateCustomerAction(
   _prevState: CustomerFormState | null,
   formData: FormData,
 ): Promise<CustomerFormState> {
-  await requireSession();
+  const session = await requireSession();
 
   const id = formData.get(FIELD.id);
 
@@ -84,6 +93,14 @@ export async function updateCustomerAction(
         values: parsed.values,
       };
     }
+
+    await recordActivity(db, {
+      action: "update",
+      entity: "customer",
+      entityId: id,
+      label: parsed.input.name,
+      actor: toActor(session),
+    });
   } catch (cause) {
     console.error("[customers] update failed", cause);
     return {
@@ -112,7 +129,7 @@ export async function deleteCustomerAction(
   _prevState: DeleteCustomerState | null,
   formData: FormData,
 ): Promise<DeleteCustomerState> {
-  await requireSession();
+  const session = await requireSession();
 
   const id = formData.get(FIELD.id);
 
@@ -122,6 +139,17 @@ export async function deleteCustomerAction(
 
   try {
     const result = await deleteCustomer(db, id);
+
+    if (result.ok) {
+      // The name comes back from the delete: after this there is nothing to read.
+      await recordActivity(db, {
+        action: "delete",
+        entity: "customer",
+        entityId: id,
+        label: result.name,
+        actor: toActor(session),
+      });
+    }
 
     if (!result.ok) {
       if (result.reason === "not_found") {

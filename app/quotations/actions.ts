@@ -15,9 +15,11 @@ import { isQuotationId, REISSUE_FIELD as FIELD } from "@/lib/quotations/form";
 import {
   deleteQuotation,
   duplicateQuotation,
+  getQuotationReference,
   setQuotationDate,
   updateQuotation,
 } from "@/lib/quotations/service";
+import { recordActivity, toActor } from "@/lib/activity/service";
 
 export type ReissueState = { error?: string };
 
@@ -27,7 +29,7 @@ export async function updateQuotationAction(
   formData: FormData,
 ): Promise<QuotationEditState> {
   // Verified here as well as in the page: a Server Action is its own entry point.
-  await requireSession();
+  const session = await requireSession();
 
   const id = formData.get(EDIT_FIELD.id);
 
@@ -43,6 +45,14 @@ export async function updateQuotationAction(
     const result = await updateQuotation(db, id, parsed.input);
 
     if (!result.ok) return { formError: "That quotation has been deleted." };
+
+    await recordActivity(db, {
+      action: "update",
+      entity: "quotation",
+      entityId: id,
+      label: (await getQuotationReference(db, id)) ?? parsed.input.subject,
+      actor: toActor(session),
+    });
   } catch (cause) {
     /*
      * Most likely a line whose price was retired between loading the form and
@@ -114,6 +124,17 @@ export async function duplicateQuotationAction(
     }
 
     copyId = result.id;
+
+    // Logged as an addition, because a copy is a new document with its own
+    // reference — with the original named, since that is the useful part.
+    await recordActivity(db, {
+      action: "create",
+      entity: "quotation",
+      entityId: result.id,
+      label: result.quoteNo,
+      detail: `copied from ${(await getQuotationReference(db, id)) ?? "another quotation"}`,
+      actor: toActor(session),
+    });
   } catch (cause) {
     console.error("[quotations] duplicate failed", cause);
     return { error: "Could not copy the quotation. Please try again." };
@@ -129,7 +150,7 @@ export async function setQuotationDateAction(
   _prevState: ReissueState | null,
   formData: FormData,
 ): Promise<ReissueState> {
-  await requireSession();
+  const session = await requireSession();
 
   const id = formData.get(FIELD.id);
 
@@ -145,6 +166,16 @@ export async function setQuotationDateAction(
     const found = await setQuotationDate(db, id, parsed.date);
 
     if (!found) return { error: "That quotation has been deleted." };
+
+    // The date is the whole change here, so it belongs in the detail.
+    await recordActivity(db, {
+      action: "update",
+      entity: "quotation",
+      entityId: id,
+      label: (await getQuotationReference(db, id)) ?? "quotation",
+      detail: `re-dated to ${parsed.date}`,
+      actor: toActor(session),
+    });
   } catch (cause) {
     console.error("[quotations] re-date failed", cause);
     return { error: "Could not change the date. Please try again." };
@@ -160,7 +191,7 @@ export async function deleteQuotationAction(
   _prevState: DeleteQuotationState | null,
   formData: FormData,
 ): Promise<DeleteQuotationState> {
-  await requireSession();
+  const session = await requireSession();
 
   const id = formData.get(FIELD.id);
 
@@ -171,7 +202,19 @@ export async function deleteQuotationAction(
   try {
     // Items and exclusions cascade; nothing else references a quotation, and an
     // already-deleted row needs no message — just a refreshed list.
-    await deleteQuotation(db, id);
+    const result = await deleteQuotation(db, id);
+
+    if (result.ok) {
+      // The reference comes back from the delete, and is not recycled — so this
+      // entry stays the only remaining trace of RDX-….
+      await recordActivity(db, {
+        action: "delete",
+        entity: "quotation",
+        entityId: id,
+        label: result.quoteNo,
+        actor: toActor(session),
+      });
+    }
   } catch (cause) {
     console.error("[quotations] delete failed", cause);
     return { error: "Could not delete the quotation. Please try again." };

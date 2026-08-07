@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   LuFileText,
+  LuHistory,
   LuLayoutTemplate,
   LuPackage,
   LuPlus,
@@ -49,6 +50,12 @@ const DESTINATIONS = [
     label: "Items",
     hint: "The catalogue and its prices",
     Icon: LuPackage,
+  },
+  {
+    href: "/activity",
+    label: "Activity",
+    hint: "Who changed what, and when",
+    Icon: LuHistory,
   },
 ] as const;
 

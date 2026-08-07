@@ -4,12 +4,14 @@ import { LuPencil, LuPlus } from "react-icons/lu";
 
 import { AppHeader } from "@/components/app-header";
 import { DeleteRowButton } from "@/components/delete-row-button";
+import { LastChange } from "@/components/last-change";
 import { RecordCard, RecordList } from "@/components/record-list";
 import {
   RowAction,
   RowActions,
   type RowActionsAlign,
 } from "@/components/row-actions";
+import { latestActivityFor } from "@/lib/activity/service";
 import { db } from "@/db";
 import { requireSession } from "@/lib/auth/session";
 import { CATEGORY_LABEL, type Category } from "@/lib/items/form";
@@ -101,6 +103,15 @@ export default async function ItemsPage(props: PageProps<"/items">) {
   const term = normalizeSearch((await props.searchParams)[SEARCH_PARAM]);
   const rows = await listItems(db, { search: term });
 
+  // One lookup for the rows on this page; `now` is fixed so every row is
+  // measured against the same instant.
+  const activity = await latestActivityFor(
+    db,
+    "item",
+    rows.map((row) => row.id),
+  );
+  const now = new Date();
+
   return (
     <main className="reydex-auth-surface flex flex-1 flex-col">
       <AppHeader>
@@ -187,6 +198,15 @@ export default async function ItemsPage(props: PageProps<"/items">) {
                         value: <Prices row={row} />,
                         strong: true,
                       },
+                      {
+                        label: "Change",
+                        value: (
+                          <LastChange
+                            entry={activity.get(row.id) ?? null}
+                            now={now}
+                          />
+                        ),
+                      },
                     ]}
                     actions={<Controls row={row} />}
                   />
@@ -203,6 +223,7 @@ export default async function ItemsPage(props: PageProps<"/items">) {
                       <th className="px-4 py-3 text-right font-medium">
                         Live prices
                       </th>
+                      <th className="px-4 py-3 font-medium">Last change</th>
                       <th className="px-4 py-3" />
                     </tr>
                   </thead>
@@ -237,6 +258,12 @@ export default async function ItemsPage(props: PageProps<"/items">) {
                         </td>
                         <td className="px-4 py-3 text-right whitespace-nowrap text-gold-100/85">
                           <Prices row={row} />
+                        </td>
+                        <td className="px-4 py-3 text-gold-100/55">
+                          <LastChange
+                            entry={activity.get(row.id) ?? null}
+                            now={now}
+                          />
                         </td>
                         <td className="px-4 py-3">
                           <Controls row={row} align="end" />

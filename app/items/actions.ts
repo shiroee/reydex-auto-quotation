@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { recordActivity, toActor } from "@/lib/activity/service";
 import { db } from "@/db";
 import { requireSession } from "@/lib/auth/session";
 import {
@@ -36,7 +37,7 @@ export async function createItemAction(
   formData: FormData,
 ): Promise<ItemFormState> {
   // Verified here as well as in the page: a Server Action is its own entry point.
-  await requireSession();
+  const session = await requireSession();
 
   const parsed = parseItemForm(formData);
 
@@ -45,7 +46,16 @@ export async function createItemAction(
   }
 
   try {
-    await createItem(db, parsed.input);
+    const { id } = await createItem(db, parsed.input);
+
+    await recordActivity(db, {
+      action: "create",
+      entity: "item",
+      entityId: id,
+      label: parsed.input.name,
+      detail: parsed.input.sku,
+      actor: toActor(session),
+    });
   } catch (cause) {
     console.error("[items] create failed", cause);
 
@@ -71,7 +81,7 @@ export async function updateItemAction(
   _prevState: ItemFormState | null,
   formData: FormData,
 ): Promise<ItemFormState> {
-  await requireSession();
+  const session = await requireSession();
 
   const id = formData.get(FIELD.id);
 
@@ -94,6 +104,15 @@ export async function updateItemAction(
         values: parsed.values,
       };
     }
+
+    await recordActivity(db, {
+      action: "update",
+      entity: "item",
+      entityId: id,
+      label: parsed.input.name,
+      detail: parsed.input.sku,
+      actor: toActor(session),
+    });
   } catch (cause) {
     console.error("[items] update failed", cause);
 
@@ -120,7 +139,7 @@ export async function deleteItemAction(
   _prevState: DeleteItemState | null,
   formData: FormData,
 ): Promise<DeleteItemState> {
-  await requireSession();
+  const session = await requireSession();
 
   const id = formData.get(FIELD.id);
 
@@ -129,7 +148,18 @@ export async function deleteItemAction(
   }
 
   try {
-    await deleteItem(db, id);
+    const result = await deleteItem(db, id);
+
+    if (result.ok) {
+      // The name comes back from the delete: after this there is nothing to read.
+      await recordActivity(db, {
+        action: "delete",
+        entity: "item",
+        entityId: id,
+        label: result.name,
+        actor: toActor(session),
+      });
+    }
   } catch (cause) {
     console.error("[items] delete failed", cause);
     return { error: "Could not delete the item. Please try again." };

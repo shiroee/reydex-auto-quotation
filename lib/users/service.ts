@@ -50,6 +50,11 @@ export type UserMutationResult =
   | { ok: true }
   | { ok: false; field?: "name" | "email" | "password" | "role"; message: string };
 
+/** As above, plus the id of the account just created, for the activity log. */
+export type CreateUserResult =
+  | { ok: true; id: string }
+  | { ok: false; field?: "name" | "email" | "password" | "role"; message: string };
+
 /**
  * Set on the Neon Auth record so the reason an account cannot sign in is legible
  * from the database as well as from this dashboard.
@@ -186,8 +191,8 @@ export async function countActiveAdmins(db: UserDb): Promise<number | null> {
     .length;
 }
 
-export async function createUser(input: UserInput): Promise<UserMutationResult> {
-  const { error } = await auth.admin.createUser({
+export async function createUser(input: UserInput): Promise<CreateUserResult> {
+  const { data, error } = await auth.admin.createUser({
     email: input.email,
     name: input.name,
     // Required by the endpoint; the form guarantees it on this path.
@@ -195,12 +200,12 @@ export async function createUser(input: UserInput): Promise<UserMutationResult> 
     role: input.role,
   });
 
-  if (error) {
-    console.error("[users] create failed", error.code, error.status);
+  if (error || !data) {
+    console.error("[users] create failed", error?.code, error?.status);
     return { ok: false, ...describeAdminUserError(error) };
   }
 
-  return { ok: true };
+  return { ok: true, id: data.user.id };
 }
 
 /**

@@ -4,12 +4,14 @@ import { LuPencil, LuPlus } from "react-icons/lu";
 
 import { AppHeader } from "@/components/app-header";
 import { DeleteRowButton } from "@/components/delete-row-button";
+import { LastChange } from "@/components/last-change";
 import { RecordCard, RecordList } from "@/components/record-list";
 import {
   RowAction,
   RowActions,
   type RowActionsAlign,
 } from "@/components/row-actions";
+import { latestActivityFor } from "@/lib/activity/service";
 import { db } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { normalizeSearch, SEARCH_PARAM } from "@/lib/quotations/search";
@@ -165,6 +167,15 @@ export default async function UsersPage(props: PageProps<"/users">) {
       user.role === "admin" && !user.disabled && activeAdmins <= 1,
   }));
 
+  // One lookup for the rows on this page; `now` is fixed so every row is
+  // measured against the same instant.
+  const activity = await latestActivityFor(
+    db,
+    "user",
+    rows.map((row) => row.id),
+  );
+  const now = new Date();
+
   return (
     <main className="reydex-auth-surface flex flex-1 flex-col">
       <AppHeader>
@@ -248,6 +259,15 @@ export default async function UsersPage(props: PageProps<"/users">) {
                         value: row.disabled ? "Cannot sign in" : "Active",
                       },
                       { label: "Quotes", value: row.quotationCount },
+                      {
+                        label: "Change",
+                        value: (
+                          <LastChange
+                            entry={activity.get(row.id) ?? null}
+                            now={now}
+                          />
+                        ),
+                      },
                     ]}
                     actions={<Controls row={row} />}
                   />
@@ -264,6 +284,7 @@ export default async function UsersPage(props: PageProps<"/users">) {
                       <th className="px-4 py-3 text-right font-medium">
                         Quotes
                       </th>
+                      <th className="px-4 py-3 font-medium">Last change</th>
                       <th className="px-4 py-3" />
                     </tr>
                   </thead>
@@ -304,6 +325,12 @@ export default async function UsersPage(props: PageProps<"/users">) {
                          */}
                         <td className="px-4 py-3 text-right tabular-nums text-gold-100/55">
                           {row.quotationCount}
+                        </td>
+                        <td className="px-4 py-3 text-gold-100/55">
+                          <LastChange
+                            entry={activity.get(row.id) ?? null}
+                            now={now}
+                          />
                         </td>
                         <td className="px-4 py-3">
                           <Controls row={row} align="end" />

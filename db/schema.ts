@@ -401,6 +401,68 @@ export const quotationPresets = pgTable(
 );
 
 /* -------------------------------------------------------------------------- */
+/* Activity log                                                               */
+/* -------------------------------------------------------------------------- */
+
+export const activityAction = pgEnum("activity_action", [
+  "create",
+  "update",
+  "delete",
+]);
+
+/** The five things a dashboard lists, and therefore the five things acted on. */
+export const activityEntity = pgEnum("activity_entity", [
+  "quotation",
+  "customer",
+  "item",
+  "quotation_type",
+  "user",
+]);
+
+/**
+ * Who added, changed or removed each record.
+ *
+ * A separate log rather than `created_by`/`updated_by` columns on every table,
+ * because deletion is half of the question being answered: once the row is gone
+ * there is nowhere on it left to record who removed it. One append-only table
+ * covers all three verbs for every entity, and it is the only place a deleted
+ * record can still be accounted for.
+ *
+ * The actor and the record's name are stored as *snapshots*, for the same reason
+ * `quotation_items` snapshots what it quoted: history has to stay readable after
+ * the account that acted is deleted and after the record it names is gone.
+ * Storing `actor_name` also means the log reads correctly for staff who cannot
+ * call the Neon Auth admin API — resolving ids to names needs the `admin` role,
+ * and everyone can see these dashboards.
+ */
+export const activityLog = pgTable(
+  "activity_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    action: activityAction("action").notNull(),
+    entity: activityEntity("entity").notNull(),
+    /** The row acted on. No foreign key: entries outlive what they describe. */
+    entityId: uuid("entity_id").notNull(),
+    /** What it was called at the time, e.g. "RDX-2026-0004", "TRUE NORTH". */
+    label: text("label").notNull(),
+    /** Wording for what a bare verb does not convey: "disabled", "role → admin". */
+    detail: text("detail"),
+    /** neon_auth.user.id — intentionally no FK, see the note at the top. */
+    actorUserId: text("actor_user_id"),
+    actorName: text("actor_name"),
+    actorEmail: text("actor_email"),
+  },
+  (t) => [
+    index("activity_log_occurred_idx").on(t.occurredAt),
+    // Serves the per-record lookup each dashboard does for its rows.
+    index("activity_log_entity_idx").on(t.entity, t.entityId),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
 /* Relations                                                                  */
 /* -------------------------------------------------------------------------- */
 
@@ -469,3 +531,5 @@ export type Customer = typeof customers.$inferSelect;
 export type Quotation = typeof quotations.$inferSelect;
 export type QuotationItem = typeof quotationItems.$inferSelect;
 export type CompanyProfile = typeof companyProfile.$inferSelect;
+export type ActivityEntry = typeof activityLog.$inferSelect;
+export type NewActivityEntry = typeof activityLog.$inferInsert;

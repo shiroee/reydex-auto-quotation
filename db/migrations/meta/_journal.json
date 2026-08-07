@@ -15,6 +15,13 @@
       "when": 1785950257024,
       "tag": "0001_living_cloak",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786130618511,
+      "tag": "0002_tiresome_terrax",
+      "breakpoints": true
     }
   ]
 }

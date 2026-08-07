@@ -132,6 +132,40 @@ link — who prepared it — is lost.
 > `admin/set-role` accepts role strings it does not recognise. Both floors are
 > held by `lib/users/form.ts`, which is unit tested — don't route around it.
 
+## Who changed what
+
+Every dashboard carries a **Last change** column — "Edited by Juan Dela Cruz,
+2h ago" — and **`/activity`** lists the same entries across all five records,
+newest first, filterable by kind.
+
+This is one append-only table, `activity_log`, rather than `created_by` /
+`updated_by` columns on each table. Deletion is half of the question being
+answered, and once a row is gone there is nowhere left on it to record who
+removed it — so **deleted records appear only on `/activity`**, which is by
+design, not an omission.
+
+The actor and the record's name are stored as **snapshots** on each entry, for
+the same reason `quotation_items` snapshots what it quoted: history has to stay
+readable after the account that acted is deleted and after the record it names is
+gone. It also means the log works for staff who are not administrators —
+resolving a user id to a name needs the Neon Auth `admin` role, and everyone can
+see these dashboards.
+
+Writing an entry **never fails the operation it records**. `recordActivity` in
+`lib/activity/service.ts` swallows its own errors to the server log, and is
+deliberately not enrolled in the caller's transaction: a quotation is written in
+one interactive transaction, and a logging bug must not be able to abort a saved
+quotation. The trade is that a failed log write is silent apart from the server
+log.
+
+Records that already existed when this was added have no history and read as
+`—`. Nothing is backfilled, because there is nothing truthful to backfill it
+with.
+
+> Timestamps are rendered in `Asia/Manila` (`QUOTE_TIME_ZONE`), not the server's
+> zone. The server runs in UTC, where the whole Philippine morning still belongs
+> to the previous date — the same trap `todayInQuoteZone` exists to avoid.
+
 ## Database
 
 Schema is managed as code with Drizzle; `db/schema.ts` is the source of truth.
@@ -219,6 +253,7 @@ Some behaviour that is deliberate rather than incidental:
 | `proxy.ts`                        | Optimistic cookie-only route protection (Next 16 middleware) |
 | `app/login/`                      | Branded sign-in screen and its Server Action                 |
 | `lib/users/`, `app/users/`        | Account administration (the Users dashboard)                 |
+| `lib/activity/`, `app/activity/`  | Who changed what (see above)                                 |
 
 Two layers guard protected routes: `proxy.ts` turns away unauthenticated
 traffic cheaply, and `requireSession()` runs inside each page and Server Action

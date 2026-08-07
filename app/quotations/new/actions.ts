@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 
+import { recordActivity, toActor } from "@/lib/activity/service";
 import { db } from "@/db";
 import { requireSession } from "@/lib/auth/session";
 import {
@@ -31,6 +32,14 @@ export async function createQuotationAction(
       preparedByUserId: session.user.id,
     });
     quotationId = created.id;
+
+    await recordActivity(db, {
+      action: "create",
+      entity: "quotation",
+      entityId: created.id,
+      label: created.quoteNo,
+      actor: toActor(session),
+    });
   } catch (cause) {
     // Most likely a line whose price was retired between load and submit, which
     // createQuotation reports with a readable message.

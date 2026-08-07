@@ -4,12 +4,14 @@ import { LuCopy, LuFileText, LuPencil, LuPlus } from "react-icons/lu";
 
 import { AppHeader } from "@/components/app-header";
 import { DeleteRowButton } from "@/components/delete-row-button";
+import { LastChange } from "@/components/last-change";
 import { RecordCard, RecordList } from "@/components/record-list";
 import {
   RowAction,
   RowActions,
   type RowActionsAlign,
 } from "@/components/row-actions";
+import { latestActivityFor } from "@/lib/activity/service";
 import { db } from "@/db";
 import { requireSession } from "@/lib/auth/session";
 import { formatPeso } from "@/lib/quotations/money";
@@ -77,6 +79,15 @@ export default async function QuotationsPage(props: PageProps<"/quotations">) {
 
   const term = normalizeSearch((await props.searchParams)[SEARCH_PARAM]);
   const rows = await listQuotations(db, { search: term });
+
+  // One lookup for the rows on this page; `now` is fixed so every row is
+  // measured against the same instant.
+  const activity = await latestActivityFor(
+    db,
+    "quotation",
+    rows.map((row) => row.id),
+  );
+  const now = new Date();
 
   return (
     <main className="reydex-auth-surface flex flex-1 flex-col">
@@ -167,6 +178,15 @@ export default async function QuotationsPage(props: PageProps<"/quotations">) {
                         value: formatPeso(row.totalAmount),
                         strong: true,
                       },
+                      {
+                        label: "Change",
+                        value: (
+                          <LastChange
+                            entry={activity.get(row.id) ?? null}
+                            now={now}
+                          />
+                        ),
+                      },
                     ]}
                     actions={<Controls row={row} />}
                   />
@@ -188,6 +208,7 @@ export default async function QuotationsPage(props: PageProps<"/quotations">) {
                       <th className="px-4 py-3 font-medium">Type</th>
                       <th className="px-4 py-3 font-medium">Date</th>
                       <th className="px-4 py-3 text-right font-medium">Total</th>
+                      <th className="px-4 py-3 font-medium">Last change</th>
                       <th className="px-4 py-3" />
                     </tr>
                   </thead>
@@ -225,6 +246,12 @@ export default async function QuotationsPage(props: PageProps<"/quotations">) {
                         </td>
                         <td className="px-4 py-3 text-right whitespace-nowrap text-gold-100/85">
                           {formatPeso(row.totalAmount)}
+                        </td>
+                        <td className="px-4 py-3 text-gold-100/55">
+                          <LastChange
+                            entry={activity.get(row.id) ?? null}
+                            now={now}
+                          />
                         </td>
                         <td className="px-4 py-3">
                           <Controls row={row} align="end" />

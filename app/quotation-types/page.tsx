@@ -4,12 +4,14 @@ import { LuPencil, LuPlus, LuStar } from "react-icons/lu";
 
 import { AppHeader } from "@/components/app-header";
 import { DeleteRowButton } from "@/components/delete-row-button";
+import { LastChange } from "@/components/last-change";
 import { RecordCard, RecordList } from "@/components/record-list";
 import {
   RowAction,
   RowActions,
   type RowActionsAlign,
 } from "@/components/row-actions";
+import { latestActivityFor } from "@/lib/activity/service";
 import { db } from "@/db";
 import { requireSession } from "@/lib/auth/session";
 import { TEMPLATE_LABEL, type Template } from "@/lib/presets/form";
@@ -108,6 +110,15 @@ export default async function QuotationTypesPage() {
 
   const rows = await listPresets(db);
 
+  // One lookup for the rows on this page; `now` is fixed so every row is
+  // measured against the same instant.
+  const activity = await latestActivityFor(
+    db,
+    "quotation_type",
+    rows.map((row) => row.id),
+  );
+  const now = new Date();
+
   return (
     <main className="reydex-auth-surface flex flex-1 flex-col">
       <AppHeader>
@@ -161,6 +172,15 @@ export default async function QuotationTypesPage() {
                       { label: "Payment", value: row.paymentTerms ?? "—" },
                       { label: "Delivery", value: row.deliveryTerms ?? "—" },
                       { label: "Validity", value: `${row.validityDays} days` },
+                      {
+                        label: "Change",
+                        value: (
+                          <LastChange
+                            entry={activity.get(row.id) ?? null}
+                            now={now}
+                          />
+                        ),
+                      },
                     ]}
                     actions={
                       <Controls row={row} isLastType={rows.length === 1} />
@@ -179,6 +199,7 @@ export default async function QuotationTypesPage() {
                       <th className="px-4 py-3 text-right font-medium">
                         Validity
                       </th>
+                      <th className="px-4 py-3 font-medium">Last change</th>
                       <th className="px-4 py-3" />
                     </tr>
                   </thead>
@@ -215,6 +236,12 @@ export default async function QuotationTypesPage() {
                         </td>
                         <td className="px-4 py-3 text-right whitespace-nowrap tabular-nums text-gold-100/55">
                           {row.validityDays} days
+                        </td>
+                        <td className="px-4 py-3 text-gold-100/55">
+                          <LastChange
+                            entry={activity.get(row.id) ?? null}
+                            now={now}
+                          />
                         </td>
                         <td className="px-4 py-3">
                           <Controls

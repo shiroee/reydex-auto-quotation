@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { recordActivity, toActor } from "@/lib/activity/service";
 import { db } from "@/db";
 import { requireSession } from "@/lib/auth/session";
 import {
@@ -40,7 +41,7 @@ export async function createPresetAction(
   formData: FormData,
 ): Promise<PresetFormState> {
   // Verified here as well as in the page: a Server Action is its own entry point.
-  await requireSession();
+  const session = await requireSession();
 
   const parsed = parsePresetForm(formData);
 
@@ -49,7 +50,15 @@ export async function createPresetAction(
   }
 
   try {
-    await createPreset(db, parsed.input);
+    const { id } = await createPreset(db, parsed.input);
+
+    await recordActivity(db, {
+      action: "create",
+      entity: "quotation_type",
+      entityId: id,
+      label: parsed.input.label,
+      actor: toActor(session),
+    });
   } catch (cause) {
     console.error("[quotation-types] create failed", cause);
 
@@ -75,7 +84,7 @@ export async function updatePresetAction(
   _prevState: PresetFormState | null,
   formData: FormData,
 ): Promise<PresetFormState> {
-  await requireSession();
+  const session = await requireSession();
 
   const id = formData.get(FIELD.id);
 
@@ -100,6 +109,14 @@ export async function updatePresetAction(
         values: parsed.values,
       };
     }
+
+    await recordActivity(db, {
+      action: "update",
+      entity: "quotation_type",
+      entityId: id,
+      label: parsed.input.label,
+      actor: toActor(session),
+    });
   } catch (cause) {
     console.error("[quotation-types] update failed", cause);
 
@@ -126,7 +143,7 @@ export async function deletePresetAction(
   _prevState: DeletePresetState | null,
   formData: FormData,
 ): Promise<DeletePresetState> {
-  await requireSession();
+  const session = await requireSession();
 
   const id = formData.get(FIELD.id);
 
@@ -136,6 +153,21 @@ export async function deletePresetAction(
 
   try {
     const result = await deletePreset(db, id);
+
+    if (result.ok) {
+      // The label comes back from the delete: after this there is nothing to read.
+      await recordActivity(db, {
+        action: "delete",
+        entity: "quotation_type",
+        entityId: id,
+        label: result.label,
+        // Deleting the default promotes another; say which, since it was not asked for.
+        detail: result.promoted
+          ? `default passed to ${result.promoted}`
+          : undefined,
+        actor: toActor(session),
+      });
+    }
 
     if (!result.ok) {
       if (result.reason === "last_one") {

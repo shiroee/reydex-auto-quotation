@@ -3,12 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { recordActivity, toActor } from "@/lib/activity/service";
 import { db } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import {
   FIELD,
   isUserId,
   parseUserForm,
+  ROLE_LABEL,
   type UserFormState,
 } from "@/lib/users/form";
 import {
@@ -31,7 +33,7 @@ export async function createUserAction(
   _prevState: UserFormState | null,
   formData: FormData,
 ): Promise<UserFormState> {
-  await requireAdmin();
+  const session = await requireAdmin();
 
   const parsed = parseUserForm(formData, "create");
 
@@ -49,6 +51,16 @@ export async function createUserAction(
       values: parsed.values,
     };
   }
+
+  // The address and role, since neither is obvious from the name alone.
+  await recordActivity(db, {
+    action: "create",
+    entity: "user",
+    entityId: result.id,
+    label: parsed.input.name,
+    detail: `${parsed.input.email} · ${ROLE_LABEL[parsed.input.role]}`,
+    actor: toActor(session),
+  });
 
   // Outside any try: `redirect` signals by throwing.
   revalidatePath("/users");
@@ -109,6 +121,28 @@ export async function updateUserAction(
       values: parsed.values,
     };
   }
+
+  /*
+   * Spell out the consequential parts of an edit. A renamed account is evident
+   * from the label, but a role change and a password reset are exactly the things
+   * someone reading this later needs to see named.
+   */
+  const changes = [
+    parsed.input.role !== existing.role
+      ? `role → ${ROLE_LABEL[parsed.input.role]}`
+      : null,
+    parsed.input.email !== existing.email ? `email → ${parsed.input.email}` : null,
+    parsed.input.password !== null ? "password reset" : null,
+  ].filter(Boolean);
+
+  await recordActivity(db, {
+    action: "update",
+    entity: "user",
+    entityId: id,
+    label: parsed.input.name,
+    detail: changes.length > 0 ? changes.join(" · ") : null,
+    actor: toActor(session),
+  });
 
   revalidatePath("/users");
 
@@ -177,6 +211,16 @@ export async function setUserDisabledAction(
 
   if (!result.ok) return { error: result.message };
 
+  // Recorded as an edit: the account is changed, not added or removed.
+  await recordActivity(db, {
+    action: "update",
+    entity: "user",
+    entityId: id,
+    label: existing.name,
+    detail: disable ? "disabled" : "re-enabled",
+    actor: toActor(session),
+  });
+
   revalidatePath("/users");
   return {};
 }
@@ -227,6 +271,16 @@ export async function deleteUserAction(
   const result = await deleteUser(id);
 
   if (!result.ok) return { error: result.message };
+
+  // The address as well: the account is gone, so this is all that identifies it.
+  await recordActivity(db, {
+    action: "delete",
+    entity: "user",
+    entityId: id,
+    label: existing.name,
+    detail: existing.email,
+    actor: toActor(session),
+  });
 
   revalidatePath("/users");
   return {};

@@ -4,12 +4,14 @@ import { LuPencil, LuPlus } from "react-icons/lu";
 
 import { AppHeader } from "@/components/app-header";
 import { DeleteRowButton } from "@/components/delete-row-button";
+import { LastChange } from "@/components/last-change";
 import { RecordCard, RecordList } from "@/components/record-list";
 import {
   RowAction,
   RowActions,
   type RowActionsAlign,
 } from "@/components/row-actions";
+import { latestActivityFor } from "@/lib/activity/service";
 import { db } from "@/db";
 import { requireSession } from "@/lib/auth/session";
 import { listCustomers, type CustomerListRow } from "@/lib/customers/service";
@@ -96,6 +98,15 @@ export default async function CustomersPage(props: PageProps<"/customers">) {
   const term = normalizeSearch((await props.searchParams)[SEARCH_PARAM]);
   const rows = await listCustomers(db, { search: term });
 
+  // One lookup for the rows on this page; `now` is fixed so every row is
+  // measured against the same instant.
+  const activity = await latestActivityFor(
+    db,
+    "customer",
+    rows.map((row) => row.id),
+  );
+  const now = new Date();
+
   return (
     <main className="reydex-auth-surface flex flex-1 flex-col">
       <AppHeader>
@@ -178,6 +189,15 @@ export default async function CustomersPage(props: PageProps<"/customers">) {
                       },
                       { label: "Contact", value: <Contact row={row} /> },
                       { label: "Quotes", value: <QuoteCount row={row} /> },
+                      {
+                        label: "Change",
+                        value: (
+                          <LastChange
+                            entry={activity.get(row.id) ?? null}
+                            now={now}
+                          />
+                        ),
+                      },
                     ]}
                     actions={<Controls row={row} />}
                   />
@@ -192,6 +212,7 @@ export default async function CustomersPage(props: PageProps<"/customers">) {
                       <th className="px-4 py-3 font-medium">City / province</th>
                       <th className="px-4 py-3 font-medium">Contact</th>
                       <th className="px-4 py-3 text-right font-medium">Quotes</th>
+                      <th className="px-4 py-3 font-medium">Last change</th>
                       <th className="px-4 py-3" />
                     </tr>
                   </thead>
@@ -226,6 +247,12 @@ export default async function CustomersPage(props: PageProps<"/customers">) {
                          */}
                         <td className="px-4 py-3 text-right tabular-nums text-gold-100/55">
                           <QuoteCount row={row} />
+                        </td>
+                        <td className="px-4 py-3 text-gold-100/55">
+                          <LastChange
+                            entry={activity.get(row.id) ?? null}
+                            now={now}
+                          />
                         </td>
                         <td className="px-4 py-3">
                           <Controls row={row} align="end" />

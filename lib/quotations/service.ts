@@ -645,6 +645,26 @@ export async function setQuotationDate(
   return updated.length > 0;
 }
 
+/**
+ * The reference number alone.
+ *
+ * For labelling an activity-log entry against a quotation: the edit and re-date
+ * paths know only the id, and history needs the human reference — "RDX-2026-0004"
+ * rather than a uuid. Returns null when the row is gone.
+ */
+export async function getQuotationReference(
+  db: QuotationDb,
+  id: string,
+): Promise<string | null> {
+  const [row] = await db
+    .select({ quoteNo: quotations.quoteNo })
+    .from(quotations)
+    .where(eq(quotations.id, id))
+    .limit(1);
+
+  return row?.quoteNo ?? null;
+}
+
 export type DeleteQuotationResult =
   | { ok: true; quoteNo: string }
   | { ok: false; reason: "not_found" };

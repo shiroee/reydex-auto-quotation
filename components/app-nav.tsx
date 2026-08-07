@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LuFileText,
+  LuHistory,
   LuHouse,
   LuLayoutTemplate,
   LuPackage,
@@ -12,8 +13,9 @@ import {
 } from "react-icons/lu";
 
 /**
- * The five places the app has. Order is the order of use: raise a quotation,
- * look one up, then maintain the three things quotations are built from.
+ * The places the app has. Order is the order of use: raise a quotation, look one
+ * up, then maintain the three things quotations are built from — with the record
+ * of who changed what last, since it is consulted rather than worked in.
  */
 const SECTIONS = [
   { href: "/dashboard", label: "Home", Icon: LuHouse },
@@ -21,6 +23,7 @@ const SECTIONS = [
   { href: "/customers", label: "Customers", Icon: LuUsers },
   { href: "/quotation-types", label: "Quotation types", Icon: LuLayoutTemplate },
   { href: "/items", label: "Items", Icon: LuPackage },
+  { href: "/activity", label: "Activity", Icon: LuHistory },
 ] as const;
 
 /**

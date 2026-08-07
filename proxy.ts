@@ -40,5 +40,6 @@ export const config = {
     "/quotation-types/:path*",
     "/items/:path*",
     "/users/:path*",
+    "/activity/:path*",
   ],
 };

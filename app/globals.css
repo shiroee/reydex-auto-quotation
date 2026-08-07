@@ -171,6 +171,44 @@ body {
   color: var(--color-gold-100);
 }
 
+/* ---------------------------------------------------------------------------
+   Phones
+   --------------------------------------------------------------------------- */
+
+/*
+ * iOS Safari zooms the whole page in when a control with text smaller than 16px
+ * takes focus, and never zooms back out — so a single tap on a field leaves the
+ * app scrolled sideways for good. The fields are 14–15px by design, which reads
+ * correctly on a desktop, so they are bumped to 16px at phone widths instead.
+ *
+ * Unlayered on purpose: Tailwind's utilities live in the `utilities` layer, so
+ * this wins over the `text-sm` on the controls themselves without !important.
+ */
+@media (max-width: 40rem) {
+  input:not([type="checkbox"], [type="radio"]),
+  select,
+  textarea {
+    font-size: 1rem;
+  }
+}
+
+/*
+ * A row that scrolls sideways rather than wrapping — the header's navigation,
+ * and any table too wide for the screen. No visible scrollbar, because on a
+ * touch screen it is a swipe and the bar only steals a few pixels of content;
+ * `overscroll-behavior` keeps that swipe from turning into a page-level
+ * back-gesture once the rail reaches its end.
+ */
+.reydex-rail {
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.reydex-rail::-webkit-scrollbar {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .reydex-ember {
     animation: none;

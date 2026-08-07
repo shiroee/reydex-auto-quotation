@@ -4,10 +4,16 @@ import { LuPencil, LuPlus } from "react-icons/lu";
 
 import { AppHeader } from "@/components/app-header";
 import { DeleteRowButton } from "@/components/delete-row-button";
+import { RecordCard, RecordList } from "@/components/record-list";
+import {
+  RowAction,
+  RowActions,
+  type RowActionsAlign,
+} from "@/components/row-actions";
 import { db } from "@/db";
 import { requireSession } from "@/lib/auth/session";
 import { CATEGORY_LABEL, type Category } from "@/lib/items/form";
-import { listItems } from "@/lib/items/service";
+import { listItems, type ItemListRow } from "@/lib/items/service";
 import { formatPeso } from "@/lib/quotations/money";
 import { normalizeSearch, SEARCH_PARAM } from "@/lib/quotations/search";
 
@@ -25,6 +31,70 @@ function priceRange(min: string | null, max: string | null): string {
   return `${formatPeso(min)} – ${formatPeso(max)}`;
 }
 
+/** One row's controls, drawn once in the table cell and once in the phone card. */
+function Controls({
+  row,
+  align,
+}: {
+  row: ItemListRow;
+  align?: RowActionsAlign;
+}) {
+  return (
+    <RowActions align={align}>
+      <RowAction href={`/items/${row.id}/edit`} icon={LuPencil} tone="primary">
+        Edit
+      </RowAction>
+      {/*
+       * Deletion is allowed even for a quoted item: a quotation line holds its
+       * own snapshot and keeps only a soft backlink, which the FK nulls. Say what
+       * will be severed rather than blocking it — and note that clearing
+       * "available to quote" is the reversible way.
+       */}
+      <DeleteRowButton
+        action={deleteItemAction}
+        id={row.id}
+        name={row.name}
+        warning={
+          row.quotedLineCount > 0
+            ? `Quoted on ${row.quotedLineCount} ${
+                row.quotedLineCount === 1 ? "line" : "lines"
+              }. Those keep their wording but lose the link.`
+            : undefined
+        }
+        align={align}
+      />
+    </RowActions>
+  );
+}
+
+/** Shown beside the name of an item the builder no longer offers. */
+function RetiredBadge() {
+  return (
+    <span
+      title="Not offered in the builder"
+      className="rounded-md bg-gold-100/8 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-gold-100/50"
+    >
+      Retired
+    </span>
+  );
+}
+
+/** The price range, with how many live variants it was drawn from. */
+function Prices({ row }: { row: ItemListRow }) {
+  return (
+    <>
+      {priceRange(row.minPrice, row.maxPrice)}
+      <span className="mt-0.5 block text-xs font-normal text-gold-100/35">
+        {row.variantCount === 0
+          ? "no live price"
+          : `${row.variantCount} ${
+              row.variantCount === 1 ? "variant" : "variants"
+            }`}
+      </span>
+    </>
+  );
+}
+
 export default async function ItemsPage(props: PageProps<"/items">) {
   await requireSession();
 
@@ -36,14 +106,15 @@ export default async function ItemsPage(props: PageProps<"/items">) {
       <AppHeader>
         <Link
           href="/items/new"
-          className="reydex-submit inline-flex h-9 items-center gap-1.5 rounded-lg px-3.5 text-sm font-semibold"
+          className="reydex-submit inline-flex h-10 items-center gap-1.5 rounded-lg px-3.5 text-sm font-semibold sm:h-9"
         >
           <LuPlus aria-hidden className="size-4" />
-          New item
+          <span className="sm:hidden">New</span>
+          <span className="hidden sm:inline">New item</span>
         </Link>
       </AppHeader>
 
-      <div className="flex-1 px-5 py-10 sm:px-8">
+      <div className="flex-1 px-5 py-8 sm:px-8 sm:py-10">
         <div className="mx-auto w-full max-w-5xl">
           <ItemsSearch term={term} />
 
@@ -91,100 +162,91 @@ export default async function ItemsPage(props: PageProps<"/items">) {
               )}
             </div>
           ) : (
-            <div className="reydex-card overflow-hidden rounded-2xl">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b border-gold-500/15 text-xs uppercase tracking-wider text-gold-100/45">
-                  <tr>
-                    <th className="px-4 py-3 font-medium">SKU</th>
-                    <th className="px-4 py-3 font-medium">Name</th>
-                    <th className="px-4 py-3 font-medium">Category</th>
-                    <th className="px-4 py-3 text-right font-medium">
-                      Live prices
-                    </th>
-                    <th className="px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => (
-                    <tr
-                      key={row.id}
-                      className="border-b border-gold-500/8 last:border-0"
-                    >
-                      <td className="px-4 py-3 font-mono text-xs text-gold-200">
-                        {row.sku}
-                      </td>
-                      <td className="px-4 py-3 text-gold-100/85">
-                        <span className="flex items-center gap-2">
-                          <Link
-                            href={`/items/${row.id}/edit`}
-                            className="underline-offset-2 hover:text-gold-100 hover:underline"
-                          >
-                            {row.name}
-                          </Link>
-                          {row.isActive ? null : (
-                            <span
-                              title="Not offered in the builder"
-                              className="rounded-md bg-gold-100/8 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-gold-100/50"
-                            >
-                              Retired
-                            </span>
-                          )}
-                        </span>
-                        <span className="mt-0.5 block text-xs text-gold-100/35">
-                          {[row.brand, `per ${row.unitLabel}`]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-gold-100/55">
-                        {CATEGORY_LABEL[row.category as Category] ??
-                          row.category}
-                      </td>
-                      <td className="px-4 py-3 text-right text-gold-100/85">
-                        {priceRange(row.minPrice, row.maxPrice)}
-                        <span className="mt-0.5 block text-xs text-gold-100/35">
-                          {row.variantCount === 0
-                            ? "no live price"
-                            : `${row.variantCount} ${
-                                row.variantCount === 1 ? "variant" : "variants"
-                              }`}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-start justify-end gap-4">
-                          <Link
-                            href={`/items/${row.id}/edit`}
-                            className="inline-flex items-center gap-1.5 text-xs font-medium text-gold-300 underline-offset-2 hover:underline"
-                          >
-                            <LuPencil aria-hidden className="size-3.5" />
-                            Edit
-                          </Link>
-                          {/*
-                           * Deletion is allowed even for a quoted item: a
-                           * quotation line holds its own snapshot and keeps only
-                           * a soft backlink, which the FK nulls. Say what will be
-                           * severed rather than blocking it — and note that
-                           * clearing "available to quote" is the reversible way.
-                           */}
-                          <DeleteRowButton
-                            action={deleteItemAction}
-                            id={row.id}
-                            name={row.name}
-                            warning={
-                              row.quotedLineCount > 0
-                                ? `Quoted on ${row.quotedLineCount} ${
-                                    row.quotedLineCount === 1 ? "line" : "lines"
-                                  }. Those keep their wording but lose the link.`
-                                : undefined
-                            }
-                          />
-                        </div>
-                      </td>
+            <>
+              {/* Cards on a phone; the table from `md` up. */}
+              <RecordList>
+                {rows.map((row) => (
+                  <RecordCard
+                    key={row.id}
+                    eyebrow={row.sku}
+                    title={row.name}
+                    href={`/items/${row.id}/edit`}
+                    badge={row.isActive ? null : <RetiredBadge />}
+                    subtitle={[row.brand, `per ${row.unitLabel}`]
+                      .filter(Boolean)
+                      .join(" · ")}
+                    facts={[
+                      {
+                        label: "Category",
+                        value:
+                          CATEGORY_LABEL[row.category as Category] ??
+                          row.category,
+                      },
+                      {
+                        label: "Prices",
+                        value: <Prices row={row} />,
+                        strong: true,
+                      },
+                    ]}
+                    actions={<Controls row={row} />}
+                  />
+                ))}
+              </RecordList>
+
+              <div className="reydex-card hidden overflow-x-auto rounded-2xl md:block">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-gold-500/15 text-xs uppercase tracking-wider text-gold-100/45">
+                    <tr>
+                      <th className="px-4 py-3 font-medium">SKU</th>
+                      <th className="px-4 py-3 font-medium">Name</th>
+                      <th className="px-4 py-3 font-medium">Category</th>
+                      <th className="px-4 py-3 text-right font-medium">
+                        Live prices
+                      </th>
+                      <th className="px-4 py-3" />
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {rows.map((row) => (
+                      <tr
+                        key={row.id}
+                        className="border-b border-gold-500/8 last:border-0"
+                      >
+                        <td className="px-4 py-3 font-mono text-xs text-gold-200">
+                          {row.sku}
+                        </td>
+                        <td className="px-4 py-3 text-gold-100/85">
+                          <span className="flex items-center gap-2">
+                            <Link
+                              href={`/items/${row.id}/edit`}
+                              className="underline-offset-2 hover:text-gold-100 hover:underline"
+                            >
+                              {row.name}
+                            </Link>
+                            {row.isActive ? null : <RetiredBadge />}
+                          </span>
+                          <span className="mt-0.5 block text-xs text-gold-100/35">
+                            {[row.brand, `per ${row.unitLabel}`]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-gold-100/55">
+                          {CATEGORY_LABEL[row.category as Category] ??
+                            row.category}
+                        </td>
+                        <td className="px-4 py-3 text-right whitespace-nowrap text-gold-100/85">
+                          <Prices row={row} />
+                        </td>
+                        <td className="px-4 py-3">
+                          <Controls row={row} align="end" />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       </div>

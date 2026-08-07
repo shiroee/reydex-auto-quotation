@@ -39,6 +39,7 @@ export function CustomersSearch({ term }: { term: string }) {
     });
   }
 
+  /* Stacked on a phone, one line from `sm` up — see the quotations box. */
   return (
     <form
       action="/customers"
@@ -60,13 +61,13 @@ export function CustomersSearch({ term }: { term: string }) {
         aria-label="Search customers"
         autoComplete="off"
         spellCheck={false}
-        className="reydex-field h-10 min-w-0 flex-1 rounded-lg px-3.5 text-sm text-gold-100 placeholder:text-gold-100/35"
+        className="reydex-field h-11 w-full min-w-0 rounded-lg px-3.5 text-sm text-gold-100 placeholder:text-gold-100/35 sm:h-10 sm:w-auto sm:flex-1"
       />
 
       <button
         type="submit"
         disabled={pending}
-        className="reydex-submit inline-flex h-10 items-center rounded-lg px-4 text-sm font-semibold"
+        className="reydex-submit inline-flex h-11 flex-1 items-center justify-center rounded-lg px-4 text-sm font-semibold sm:h-10 sm:flex-none"
       >
         Search
       </button>
@@ -75,7 +76,7 @@ export function CustomersSearch({ term }: { term: string }) {
         <button
           type="button"
           onClick={() => search("")}
-          className="inline-flex h-10 items-center rounded-lg border border-gold-500/25 px-4 text-sm font-medium text-gold-100/80 transition-colors hover:border-gold-400/45 hover:text-gold-100"
+          className="inline-flex h-11 flex-1 items-center justify-center rounded-lg border border-gold-500/25 px-4 text-sm font-medium text-gold-100/80 transition-colors hover:border-gold-400/45 hover:text-gold-100 sm:h-10 sm:flex-none"
         >
           Clear
         </button>

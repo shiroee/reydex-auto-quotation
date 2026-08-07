@@ -14,16 +14,34 @@ import { AppNav } from "./app-nav";
  */
 export function AppHeader({ children }: { children?: React.ReactNode }) {
   return (
-    <header className="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-gold-500/10 px-5 py-4 sm:px-8">
-      <Link href="/dashboard" className="flex shrink-0 items-center gap-3">
+    /*
+     * One line from `md` up — lockup, navigation, actions. Below that the
+     * navigation is given the full width, so it wraps onto a line of its own and
+     * the lockup keeps the page's action beside it rather than being squeezed
+     * against five section links. `order` is what puts the actions back after
+     * the navigation once all three fit on one line.
+     */
+    <header className="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-gold-500/10 px-5 py-3.5 sm:px-8 sm:py-4">
+      <Link
+        href="/dashboard"
+        className="order-1 flex shrink-0 items-center gap-3"
+      >
         <ReydexMark logo={brandLogo} height={34} priority />
       </Link>
 
-      <AppNav />
-
       {children ? (
-        <div className="ml-auto flex items-center gap-4">{children}</div>
+        <div className="order-2 ml-auto flex items-center gap-3 sm:gap-4 md:order-3">
+          {children}
+        </div>
       ) : null}
+
+      {/*
+       * Bleeds into the header's own padding while it is on its own line, so the
+       * rail scrolls edge to edge: the negative margin cancels the padding, and
+       * the matching padding inside puts the first link back under the lockup.
+       * Both have to track `px-5 sm:px-8` above, hence the second pair.
+       */}
+      <AppNav className="order-3 -mx-5 w-full px-5 sm:-mx-8 sm:px-8 md:order-2 md:mx-0 md:w-auto md:px-0" />
     </header>
   );
 }

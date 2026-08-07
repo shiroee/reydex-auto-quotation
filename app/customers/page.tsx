@@ -4,9 +4,15 @@ import { LuPencil, LuPlus } from "react-icons/lu";
 
 import { AppHeader } from "@/components/app-header";
 import { DeleteRowButton } from "@/components/delete-row-button";
+import { RecordCard, RecordList } from "@/components/record-list";
+import {
+  RowAction,
+  RowActions,
+  type RowActionsAlign,
+} from "@/components/row-actions";
 import { db } from "@/db";
 import { requireSession } from "@/lib/auth/session";
-import { listCustomers } from "@/lib/customers/service";
+import { listCustomers, type CustomerListRow } from "@/lib/customers/service";
 import { normalizeSearch, SEARCH_PARAM } from "@/lib/quotations/search";
 
 import { deleteCustomerAction } from "./actions";
@@ -15,6 +21,74 @@ import { CustomersSearch } from "./customers-search";
 export const metadata: Metadata = { title: "Customers" };
 
 export const dynamic = "force-dynamic";
+
+/** One row's controls, drawn once in the table cell and once in the phone card. */
+function Controls({
+  row,
+  align,
+}: {
+  row: CustomerListRow;
+  align?: RowActionsAlign;
+}) {
+  return (
+    <RowActions align={align}>
+      <RowAction
+        href={`/customers/${row.id}/edit`}
+        icon={LuPencil}
+        tone="primary"
+      >
+        Edit
+      </RowAction>
+      {/*
+       * Quotations print this customer's details, so one that is referenced
+       * cannot be deleted. Saying so up front beats arming a button that always
+       * fails — the action re-checks regardless, since the count in this render
+       * can go stale.
+       */}
+      <DeleteRowButton
+        action={deleteCustomerAction}
+        id={row.id}
+        name={row.name}
+        blockedReason={
+          row.quotationCount > 0
+            ? `In use by ${row.quotationCount} ${
+                row.quotationCount === 1 ? "quotation" : "quotations"
+              }`
+            : undefined
+        }
+        align={align}
+      />
+    </RowActions>
+  );
+}
+
+/** The contact person with their phone and email beneath, or an em dash. */
+function Contact({ row }: { row: CustomerListRow }) {
+  return (
+    <>
+      {row.contactPerson ?? "—"}
+      {row.contactEmail || row.contactPhone ? (
+        <span className="mt-0.5 block text-xs text-gold-100/35">
+          {[row.contactPhone, row.contactEmail].filter(Boolean).join(" · ")}
+        </span>
+      ) : null}
+    </>
+  );
+}
+
+/** The count, linking to the quotations it stands for once there is one. */
+function QuoteCount({ row }: { row: CustomerListRow }) {
+  if (row.quotationCount === 0) return <>0</>;
+
+  return (
+    <Link
+      href={`/quotations?${SEARCH_PARAM}=${encodeURIComponent(row.name)}`}
+      className="text-gold-300 underline-offset-2 hover:underline"
+    >
+      {row.quotationCount}
+    </Link>
+  );
+}
 
 export default async function CustomersPage(props: PageProps<"/customers">) {
   await requireSession();
@@ -27,14 +101,15 @@ export default async function CustomersPage(props: PageProps<"/customers">) {
       <AppHeader>
         <Link
           href="/customers/new"
-          className="reydex-submit inline-flex h-9 items-center gap-1.5 rounded-lg px-3.5 text-sm font-semibold"
+          className="reydex-submit inline-flex h-10 items-center gap-1.5 rounded-lg px-3.5 text-sm font-semibold sm:h-9"
         >
           <LuPlus aria-hidden className="size-4" />
-          New customer
+          <span className="sm:hidden">New</span>
+          <span className="hidden sm:inline">New customer</span>
         </Link>
       </AppHeader>
 
-      <div className="flex-1 px-5 py-10 sm:px-8">
+      <div className="flex-1 px-5 py-8 sm:px-8 sm:py-10">
         <div className="mx-auto w-full max-w-5xl">
           <CustomersSearch term={term} />
 
@@ -87,102 +162,80 @@ export default async function CustomersPage(props: PageProps<"/customers">) {
               )}
             </div>
           ) : (
-            <div className="reydex-card overflow-hidden rounded-2xl">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b border-gold-500/15 text-xs uppercase tracking-wider text-gold-100/45">
-                  <tr>
-                    <th className="px-4 py-3 font-medium">Name</th>
-                    <th className="px-4 py-3 font-medium">City / province</th>
-                    <th className="px-4 py-3 font-medium">Contact</th>
-                    <th className="px-4 py-3 text-right font-medium">Quotes</th>
-                    <th className="px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => (
-                    <tr
-                      key={row.id}
-                      className="border-b border-gold-500/8 last:border-0"
-                    >
-                      <td className="px-4 py-3 text-gold-100/85">
-                        <Link
-                          href={`/customers/${row.id}/edit`}
-                          className="underline-offset-2 hover:text-gold-100 hover:underline"
-                        >
-                          {row.name}
-                        </Link>
-                        {row.addressLine ? (
-                          <span className="mt-0.5 block max-w-72 truncate text-xs text-gold-100/35">
-                            {row.addressLine}
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="px-4 py-3 text-gold-100/55">
-                        {row.cityProvince ?? "—"}
-                      </td>
-                      <td className="px-4 py-3 text-gold-100/55">
-                        {row.contactPerson ?? "—"}
-                        {row.contactEmail || row.contactPhone ? (
-                          <span className="mt-0.5 block text-xs text-gold-100/35">
-                            {[row.contactPhone, row.contactEmail]
-                              .filter(Boolean)
-                              .join(" · ")}
-                          </span>
-                        ) : null}
-                      </td>
-                      {/*
-                       * The quotation count is also what decides whether the row
-                       * can be deleted, so it earns a column of its own.
-                       */}
-                      <td className="px-4 py-3 text-right tabular-nums text-gold-100/55">
-                        {row.quotationCount > 0 ? (
-                          <Link
-                            href={`/quotations?${SEARCH_PARAM}=${encodeURIComponent(row.name)}`}
-                            className="text-gold-300 underline-offset-2 hover:underline"
-                          >
-                            {row.quotationCount}
-                          </Link>
-                        ) : (
-                          "0"
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-start justify-end gap-4">
+            <>
+              {/* Cards on a phone; the table from `md` up. */}
+              <RecordList>
+                {rows.map((row) => (
+                  <RecordCard
+                    key={row.id}
+                    title={row.name}
+                    href={`/customers/${row.id}/edit`}
+                    subtitle={row.addressLine ?? undefined}
+                    facts={[
+                      {
+                        label: "City",
+                        value: row.cityProvince ?? "—",
+                      },
+                      { label: "Contact", value: <Contact row={row} /> },
+                      { label: "Quotes", value: <QuoteCount row={row} /> },
+                    ]}
+                    actions={<Controls row={row} />}
+                  />
+                ))}
+              </RecordList>
+
+              <div className="reydex-card hidden overflow-x-auto rounded-2xl md:block">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-gold-500/15 text-xs uppercase tracking-wider text-gold-100/45">
+                    <tr>
+                      <th className="px-4 py-3 font-medium">Name</th>
+                      <th className="px-4 py-3 font-medium">City / province</th>
+                      <th className="px-4 py-3 font-medium">Contact</th>
+                      <th className="px-4 py-3 text-right font-medium">Quotes</th>
+                      <th className="px-4 py-3" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row) => (
+                      <tr
+                        key={row.id}
+                        className="border-b border-gold-500/8 last:border-0"
+                      >
+                        <td className="px-4 py-3 text-gold-100/85">
                           <Link
                             href={`/customers/${row.id}/edit`}
-                            className="inline-flex items-center gap-1.5 text-xs font-medium text-gold-300 underline-offset-2 hover:underline"
+                            className="underline-offset-2 hover:text-gold-100 hover:underline"
                           >
-                            <LuPencil aria-hidden className="size-3.5" />
-                            Edit
+                            {row.name}
                           </Link>
-                          {/*
-                           * Quotations print this customer's details, so one
-                           * that is referenced cannot be deleted. Saying so up
-                           * front beats arming a button that always fails — the
-                           * action re-checks regardless, since the count in this
-                           * render can go stale.
-                           */}
-                          <DeleteRowButton
-                            action={deleteCustomerAction}
-                            id={row.id}
-                            name={row.name}
-                            blockedReason={
-                              row.quotationCount > 0
-                                ? `In use by ${row.quotationCount} ${
-                                    row.quotationCount === 1
-                                      ? "quotation"
-                                      : "quotations"
-                                  }`
-                                : undefined
-                            }
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                          {row.addressLine ? (
+                            <span className="mt-0.5 block max-w-72 truncate text-xs text-gold-100/35">
+                              {row.addressLine}
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="px-4 py-3 text-gold-100/55">
+                          {row.cityProvince ?? "—"}
+                        </td>
+                        <td className="px-4 py-3 text-gold-100/55">
+                          <Contact row={row} />
+                        </td>
+                        {/*
+                         * The quotation count is also what decides whether the row
+                         * can be deleted, so it earns a column of its own.
+                         */}
+                        <td className="px-4 py-3 text-right tabular-nums text-gold-100/55">
+                          <QuoteCount row={row} />
+                        </td>
+                        <td className="px-4 py-3">
+                          <Controls row={row} align="end" />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       </div>

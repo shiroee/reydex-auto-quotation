@@ -211,8 +211,18 @@ export function LineItemsField({
                */}
               <input type="hidden" name={FIELD.itemId} value={line.id ?? ""} />
 
-              <div className="flex flex-wrap items-start gap-3">
-                <div className="min-w-60 flex-1">
+              {/*
+               * One line from `sm` up. Below that the picker takes the full
+               * width and the three narrow controls share the line beneath it:
+               * across, four controls leave the picker about 100px on a phone,
+               * which shows none of an option that runs to name, capacity,
+               * service kind and price. `sm:contents` is what lets the inner row
+               * dissolve into the grid's own columns rather than needing a second
+               * set of widths for each control.
+               */}
+              <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_5.5rem_7rem_auto] sm:items-start sm:gap-3">
+                {/* `min-w-0`: a long option label must not widen the column. */}
+                <div className="min-w-0">
                   <select
                     name={FIELD.itemVariant}
                     value={line.variant}
@@ -249,7 +259,7 @@ export function LineItemsField({
                   </select>
                 </div>
 
-                <div className="w-24">
+                <div className="flex items-center gap-2.5 sm:contents">
                   <input
                     name={FIELD.itemQuantity}
                     value={line.quantity}
@@ -260,28 +270,28 @@ export function LineItemsField({
                     placeholder="Qty"
                     aria-label={`Quantity for item ${index + 1}`}
                     aria-invalid={error ? "true" : undefined}
-                    className="reydex-field w-full rounded-lg px-3 py-2 text-sm text-gold-50 placeholder:text-gold-100/25"
+                    className="reydex-field w-20 rounded-lg px-3 py-2 text-sm text-gold-50 placeholder:text-gold-100/25 sm:w-full"
                   />
-                </div>
 
-                <div className="w-28 pt-2 text-right text-sm tabular-nums text-gold-100/80">
-                  {lineTotal ? formatPeso(lineTotal) : "—"}
-                </div>
+                  <div className="flex-1 text-right text-sm tabular-nums text-gold-100/80 sm:pt-2">
+                    {lineTotal ? formatPeso(lineTotal) : "—"}
+                  </div>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    setLines((current) =>
-                      current.length === 1
-                        ? [blankLine()]
-                        : current.filter((l) => l.key !== line.key),
-                    )
-                  }
-                  aria-label={`Remove item ${index + 1}`}
-                  className="mt-1 rounded-lg px-2 py-1.5 text-gold-100/40 transition-colors hover:bg-red-500/10 hover:text-red-300"
-                >
-                  <LuX aria-hidden className="size-4" />
-                </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setLines((current) =>
+                        current.length === 1
+                          ? [blankLine()]
+                          : current.filter((l) => l.key !== line.key),
+                      )
+                    }
+                    aria-label={`Remove item ${index + 1}`}
+                    className="shrink-0 rounded-lg px-2 py-2 text-gold-100/40 transition-colors hover:bg-red-500/10 hover:text-red-300 sm:mt-1 sm:py-1.5"
+                  >
+                    <LuX aria-hidden className="size-4" />
+                  </button>
+                </div>
               </div>
 
               {/* Grouping header, prefilled from the item but editable. */}
@@ -324,11 +334,11 @@ export function LineItemsField({
         })}
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-4">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <button
           type="button"
           onClick={() => setLines((current) => [...current, blankLine()])}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-gold-500/25 px-3.5 py-2 text-sm font-medium text-gold-100/80 transition-colors hover:border-gold-400/45 hover:text-gold-100"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-gold-500/25 px-3.5 py-2.5 text-sm font-medium text-gold-100/80 transition-colors hover:border-gold-400/45 hover:text-gold-100 sm:py-2"
         >
           <LuPlus aria-hidden className="size-4" />
           Add item

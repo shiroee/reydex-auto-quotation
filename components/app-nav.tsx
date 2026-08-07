@@ -7,6 +7,7 @@ import {
   LuHouse,
   LuLayoutTemplate,
   LuPackage,
+  LuUserCog,
   LuUsers,
 } from "react-icons/lu";
 
@@ -23,14 +24,36 @@ const SECTIONS = [
 ] as const;
 
 /**
+ * Administering accounts, kept last and shown only to administrators — it is
+ * housekeeping rather than part of raising a quotation.
+ */
+const ADMIN_SECTION = {
+  href: "/users",
+  label: "Users",
+  Icon: LuUserCog,
+} as const;
+
+/**
  * Primary navigation, shared by every page.
  *
  * A client component only so the current section can be derived from the path
  * rather than passed in by each page — one prop per page is one prop per page to
  * forget, and a nav that quietly highlights the wrong entry is worse than none.
+ *
+ * Whether the Users entry appears is the one thing it cannot derive, so
+ * `AppHeader` reads the session and passes it in. Hiding the link is presentation
+ * only: `/users` gates itself, as do its actions.
  */
-export function AppNav({ className }: { className?: string }) {
+export function AppNav({
+  className,
+  canManageUsers = false,
+}: {
+  className?: string;
+  canManageUsers?: boolean;
+}) {
   const pathname = usePathname();
+
+  const sections = canManageUsers ? [...SECTIONS, ADMIN_SECTION] : SECTIONS;
 
   return (
     <nav aria-label="Main" className={`min-w-0 ${className ?? ""}`}>
@@ -40,7 +63,7 @@ export function AppNav({ className }: { className?: string }) {
        * at the left edge instead of half of one.
        */}
       <ul className="reydex-rail flex snap-x snap-mandatory items-center gap-1 overflow-x-auto">
-        {SECTIONS.map((section) => {
+        {sections.map((section) => {
           // `/customers` is current on `/customers/new` too, but `/customersfoo`
           // is a different section, hence the explicit separator.
           const isCurrent =

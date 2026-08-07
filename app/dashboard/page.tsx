@@ -5,11 +5,12 @@ import {
   LuLayoutTemplate,
   LuPackage,
   LuPlus,
+  LuUserCog,
   LuUsers,
 } from "react-icons/lu";
 
 import { AppHeader } from "@/components/app-header";
-import { requireSession } from "@/lib/auth/session";
+import { isAdmin, requireSession } from "@/lib/auth/session";
 import { COMPANY_NAME } from "@/lib/brand";
 
 import { signOut } from "@/app/login/actions";
@@ -51,10 +52,22 @@ const DESTINATIONS = [
   },
 ] as const;
 
+/** Offered alongside them, but only to an administrator. */
+const ADMIN_DESTINATION = {
+  href: "/users",
+  label: "Users",
+  hint: "Who can sign in to Reydex",
+  Icon: LuUserCog,
+} as const;
+
 export default async function DashboardPage() {
   const session = await requireSession();
   const { user } = session;
   const displayName = user.name?.trim() || user.email;
+
+  const destinations = isAdmin(session)
+    ? [...DESTINATIONS, ADMIN_DESTINATION]
+    : DESTINATIONS;
 
   return (
     <main className="reydex-auth-surface flex flex-1 flex-col">
@@ -90,7 +103,7 @@ export default async function DashboardPage() {
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            {DESTINATIONS.map(({ href, label, hint, Icon }) => (
+            {destinations.map(({ href, label, hint, Icon }) => (
               <Link
                 key={href}
                 href={href}

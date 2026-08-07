@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ReydexMark } from "@/components/brand/reydex-mark";
+import { getSession, isAdmin } from "@/lib/auth/session";
 import { brandLogo } from "@/lib/brand";
 
 import { AppNav } from "./app-nav";
@@ -11,8 +12,13 @@ import { AppNav } from "./app-nav";
  *
  * Not a layout, because the printable quotation deliberately has none of this —
  * it renders a document, not a page of the app.
+ *
+ * Async so the navigation can be told whether to offer Users without every page
+ * having to pass its session down. `getSession()` is memoised per render pass,
+ * so this costs nothing on pages that already called `requireSession()`.
  */
-export function AppHeader({ children }: { children?: React.ReactNode }) {
+export async function AppHeader({ children }: { children?: React.ReactNode }) {
+  const session = await getSession();
   return (
     /*
      * One line from `md` up — lockup, navigation, actions. Below that the
@@ -41,7 +47,10 @@ export function AppHeader({ children }: { children?: React.ReactNode }) {
        * the matching padding inside puts the first link back under the lockup.
        * Both have to track `px-5 sm:px-8` above, hence the second pair.
        */}
-      <AppNav className="order-3 -mx-5 w-full px-5 sm:-mx-8 sm:px-8 md:order-2 md:mx-0 md:w-auto md:px-0" />
+      <AppNav
+        canManageUsers={isAdmin(session)}
+        className="order-3 -mx-5 w-full px-5 sm:-mx-8 sm:px-8 md:order-2 md:mx-0 md:w-auto md:px-0"
+      />
     </header>
   );
 }

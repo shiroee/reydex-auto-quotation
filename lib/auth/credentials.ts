@@ -92,6 +92,17 @@ const NETWORK_ERROR_CODES = new Set([
   "NETWORK_ERROR",
 ]);
 
+/**
+ * True when a code names a transport failure rather than a rejection.
+ *
+ * Exported so the other callers of the SDK — `lib/users/form.ts` maps the admin
+ * endpoints' errors — can tell "we could not reach Neon" apart from "Neon said
+ * no" without keeping a second copy of this list.
+ */
+export function isNetworkErrorCode(code: string | null | undefined): boolean {
+  return NETWORK_ERROR_CODES.has(code ?? "");
+}
+
 export const INVALID_CREDENTIALS_MESSAGE =
   "Incorrect email or password. Please try again.";
 
@@ -112,7 +123,7 @@ export function describeSignInError(
 ): string {
   const code = error?.code ?? "";
 
-  if (NETWORK_ERROR_CODES.has(code)) {
+  if (isNetworkErrorCode(code)) {
     return SERVICE_UNAVAILABLE_MESSAGE;
   }
 

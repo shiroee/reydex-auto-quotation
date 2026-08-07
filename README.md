@@ -84,6 +84,54 @@ npx neon@latest neon-auth user delete <user-id>
 > npx neon@latest neon-auth domain add https://app.reydex.com
 > ```
 
+### The Users dashboard
+
+Day to day, accounts are managed at **`/users`** rather than from the command
+line: add, edit, disable / re-enable, reset a password, and delete. It is
+visible only to administrators, and the navigation hides it from everyone else.
+
+Accounts are held by Neon Auth, not by this app's database, so the dashboard
+drives Better Auth's *admin* endpoints (`auth.admin.*` in `lib/users/service.ts`)
+rather than writing SQL — that is what hashes passwords and revokes a disabled
+user's live sessions. The only local data involved is how many quotations each
+account has prepared, from `quotations.prepared_by_user_id`.
+
+**Roles.** `Staff` raises quotations and maintains the catalogue; `Administrator`
+can also manage accounts. `admin` is the role Better Auth's admin plugin checks
+for, so it is an authorisation level rather than a job title.
+
+**Appointing the first administrator** needs a database write, because the
+endpoint that grants the role requires the caller to already hold it:
+
+```bash
+npm run grant-admin -- --list                          # who holds what
+npm run grant-admin -- --email juan@reydex.com         # promote
+npm run grant-admin -- --email juan@reydex.com --revoke
+```
+
+After that, use the dashboard. Keep the script for bootstrapping a fresh
+database branch and for the one case the app refuses to create: no enabled
+administrator left. Both the dashboard and the script decline to remove the last
+one.
+
+**Disable vs delete.** Disabling blocks sign-in and drops the account's live
+sessions, and is reversible — it is Better Auth's `ban`, which is why a blocked
+sign-in reports "This account has been disabled". Deleting is not reversible; it
+is safe for documents already issued, since each quotation stores its own
+signatory name and title and keeps only a soft link to the account, but that
+link — who prepared it — is lost.
+
+> A role change can take up to five minutes to be reflected for someone already
+> signed in, because the SDK serves the session from a signed cookie for
+> `sessionDataTtl`. It is cosmetic only: the auth server re-checks the role on
+> every admin call, so a stale cookie claiming `admin` cannot act on it. Signing
+> out and back in applies it immediately.
+>
+> Note also that `admin/create-user` does **not** enforce a minimum password
+> length (unlike `sign-up/email`, which returns `PASSWORD_TOO_SHORT`), and
+> `admin/set-role` accepts role strings it does not recognise. Both floors are
+> held by `lib/users/form.ts`, which is unit tested — don't route around it.
+
 ## Database
 
 Schema is managed as code with Drizzle; `db/schema.ts` is the source of truth.
@@ -165,11 +213,12 @@ Some behaviour that is deliberate rather than incidental:
 | --------------------------------- | ------------------------------------------------------------ |
 | `lib/auth/server.ts`              | Neon Auth (Managed Better Auth) server instance              |
 | `lib/auth/client.ts`              | Browser client for client-side session reads                 |
-| `lib/auth/session.ts`             | `getSession()` / `requireSession()` — the real access gate   |
+| `lib/auth/session.ts`             | `getSession()` / `requireSession()` / `requireAdmin()`       |
 | `lib/auth/credentials.ts`         | Pure validation + visitor-safe error mapping (unit tested)   |
 | `app/api/auth/[...path]/route.ts` | Auth API proxy, with sign-up blocked                         |
 | `proxy.ts`                        | Optimistic cookie-only route protection (Next 16 middleware) |
 | `app/login/`                      | Branded sign-in screen and its Server Action                 |
+| `lib/users/`, `app/users/`        | Account administration (the Users dashboard)                 |
 
 Two layers guard protected routes: `proxy.ts` turns away unauthenticated
 traffic cheaply, and `requireSession()` runs inside each page and Server Action
@@ -196,6 +245,7 @@ npm run typecheck    # tsc --noEmit
 npm run lint         # eslint
 npm test             # vitest run
 npm run create-user  # provision a staff account
+npm run grant-admin  # appoint (or list) administrators — see Accounts
 npm run make-icons   # regenerate favicon / app icons from the logo
 ```
 

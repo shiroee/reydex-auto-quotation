@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "create-user": "node --env-file=.env.local scripts/create-user.mjs",
+    "grant-admin": "tsx --env-file=.env.local scripts/grant-admin.mts",
     "make-icons": "node scripts/make-icons.mjs",
     "db:generate": "node --env-file=.env.local node_modules/drizzle-kit/bin.cjs generate",
     "db:migrate": "tsx --env-file=.env.local scripts/db-migrate.mts",

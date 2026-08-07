@@ -88,7 +88,8 @@ function Layout({ row }: { row: PresetListRow }) {
   return (
     <>
       {TEMPLATE_LABEL[row.template as Template] ?? row.template}
-      <span className="mt-0.5 block text-xs text-gold-100/35">
+      {/* Bounded: three flags joined with "·" outgrow the column otherwise. */}
+      <span className="mt-0.5 block max-w-44 truncate text-xs text-gold-100/35">
         {[
           row.showBankDetails ? "bank details" : null,
           row.exclusions.length > 0
@@ -133,7 +134,7 @@ export default async function QuotationTypesPage() {
       </AppHeader>
 
       <div className="flex-1 px-5 py-8 sm:px-8 sm:py-10">
-        <div className="mx-auto w-full max-w-5xl">
+        <div className="mx-auto w-full max-w-7xl">
           <p className="mb-5 text-sm leading-relaxed text-gold-100/45">
             A quotation type is the boilerplate the builder offers under{" "}
             <em>Quotation type</em>: layout, letter body, terms and exclusions. A
@@ -158,7 +159,7 @@ export default async function QuotationTypesPage() {
             </div>
           ) : (
             <>
-              {/* Cards on a phone; the table from `md` up. */}
+              {/* Cards on a phone and a small laptop; the table from `lg` up. */}
               <RecordList>
                 {rows.map((row) => (
                   <RecordCard
@@ -189,7 +190,7 @@ export default async function QuotationTypesPage() {
                 ))}
               </RecordList>
 
-              <div className="reydex-card hidden overflow-x-auto rounded-2xl md:block">
+              <div className="reydex-card hidden overflow-x-auto rounded-2xl lg:block">
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-gold-500/15 text-xs uppercase tracking-wider text-gold-100/45">
                     <tr>
@@ -209,17 +210,19 @@ export default async function QuotationTypesPage() {
                         key={row.id}
                         className="border-b border-gold-500/8 last:border-0"
                       >
+                        {/* Bounded, with the full label on hover — see the items table. */}
                         <td className="px-4 py-3 text-gold-100/85">
-                          <span className="flex items-center gap-2">
+                          <span className="flex max-w-56 items-center gap-2">
                             <Link
                               href={`/quotation-types/${row.id}/edit`}
-                              className="underline-offset-2 hover:text-gold-100 hover:underline"
+                              title={row.label}
+                              className="truncate underline-offset-2 hover:text-gold-100 hover:underline"
                             >
                               {row.label}
                             </Link>
                             {row.isDefault ? <DefaultBadge /> : null}
                           </span>
-                          <span className="mt-0.5 block font-mono text-xs text-gold-100/35">
+                          <span className="mt-0.5 block max-w-56 truncate font-mono text-xs text-gold-100/35">
                             {row.slug}
                           </span>
                         </td>

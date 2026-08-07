@@ -139,7 +139,7 @@ export default async function UsersPage(props: PageProps<"/users">) {
       <main className="reydex-auth-surface flex flex-1 flex-col">
         <AppHeader />
         <div className="flex-1 px-5 py-8 sm:px-8 sm:py-10">
-          <div className="mx-auto w-full max-w-5xl">
+          <div className="mx-auto w-full max-w-7xl">
             <div className="reydex-card rounded-2xl p-8 text-center" role="alert">
               <p className="text-gold-100/70">{result.message}</p>
               <p className="mt-2 text-sm text-gold-100/40">
@@ -190,7 +190,7 @@ export default async function UsersPage(props: PageProps<"/users">) {
       </AppHeader>
 
       <div className="flex-1 px-5 py-8 sm:px-8 sm:py-10">
-        <div className="mx-auto w-full max-w-5xl">
+        <div className="mx-auto w-full max-w-7xl">
           <UsersSearch term={term} />
 
           {/*
@@ -236,7 +236,7 @@ export default async function UsersPage(props: PageProps<"/users">) {
             </div>
           ) : (
             <>
-              {/* Cards on a phone; the table from `md` up. */}
+              {/* Cards on a phone and a small laptop; the table from `lg` up. */}
               <RecordList>
                 {rows.map((row) => (
                   <RecordCard
@@ -274,7 +274,7 @@ export default async function UsersPage(props: PageProps<"/users">) {
                 ))}
               </RecordList>
 
-              <div className="reydex-card hidden overflow-x-auto rounded-2xl md:block">
+              <div className="reydex-card hidden overflow-x-auto rounded-2xl lg:block">
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-gold-500/15 text-xs uppercase tracking-wider text-gold-100/45">
                     <tr>
@@ -295,16 +295,20 @@ export default async function UsersPage(props: PageProps<"/users">) {
                         className="border-b border-gold-500/8 last:border-0"
                       >
                         <td className="px-4 py-3 text-gold-100/85">
-                          <span className="flex flex-wrap items-center gap-2">
+                          <span className="flex max-w-56 flex-wrap items-center gap-2">
                             <Link
                               href={`/users/${row.id}/edit`}
-                              className="underline-offset-2 hover:text-gold-100 hover:underline"
+                              title={row.name}
+                              className="truncate underline-offset-2 hover:text-gold-100 hover:underline"
                             >
                               {row.name}
                             </Link>
                             {row.isSelf ? <SelfBadge /> : null}
                           </span>
-                          <span className="mt-0.5 block max-w-72 truncate text-xs text-gold-100/35">
+                          <span
+                            className="mt-0.5 block max-w-56 truncate text-xs text-gold-100/35"
+                            title={row.email}
+                          >
                             {row.email}
                           </span>
                         </td>

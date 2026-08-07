@@ -162,6 +162,15 @@ Records that already existed when this was added have no history and read as
 `—`. Nothing is backfilled, because there is nothing truthful to backfill it
 with.
 
+**Table layout.** Adding a column took these tables past their container, so the
+listings run to `max-w-7xl` and every text cell is bounded with `truncate` plus
+the full value in `title`. That bound is what lets the browser fit six or seven
+columns without a horizontal scrollbar; `overflow-x-auto` stays as the backstop,
+not the plan. The card view now runs to `lg` rather than `md` — between 768 and
+1024 these tables only ever meant a scrollbar, and cards read better there. When
+adding a column, check the width budget: the widest table (quotations) has about
+70px spare at 1280px.
+
 > Timestamps are rendered in `Asia/Manila` (`QUOTE_TIME_ZONE`), not the server's
 > zone. The server runs in UTC, where the whole Philippine morning still belongs
 > to the previous date — the same trap `todayInQuoteZone` exists to avoid.

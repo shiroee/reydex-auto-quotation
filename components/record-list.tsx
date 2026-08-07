@@ -7,9 +7,13 @@ import { Fragment } from "react";
  * A five-to-seven column table has nowhere to go on a 375px screen. Left alone
  * it pushes the card it sits in past the viewport and takes the whole page
  * sideways with it; clipped, the last columns — which is where Edit and Delete
- * live — simply cannot be reached. So below `md` each row is drawn again as a
+ * live — simply cannot be reached. So below `lg` each row is drawn again as a
  * card, with the columns as labelled facts: the same information, read down the
  * screen instead of across it.
+ *
+ * The switch is at `lg`, not `md`: these tables carry six or seven columns and
+ * their narrowest honest layout is about 1000px, so between 768 and 1024 the
+ * table only ever meant a horizontal scrollbar. Cards read better in that band.
  *
  * Both views render from the same row, and this file only lays them out — which
  * fields a dashboard shows, and in what order, stays with that dashboard.
@@ -25,7 +29,7 @@ export type RecordFact = {
 
 /** Hidden from `md` up, where the table takes over. */
 export function RecordList({ children }: { children: React.ReactNode }) {
-  return <ul className="flex flex-col gap-3 md:hidden">{children}</ul>;
+  return <ul className="flex flex-col gap-3 lg:hidden">{children}</ul>;
 }
 
 export function RecordCard({

@@ -49,19 +49,29 @@ function RecordLabel({ row }: { row: ActivityRow }) {
 
   return (
     <>
+      {/* Bounded, with the full text on hover — as the dashboards' tables are. */}
       {href ? (
         <Link
           href={href}
-          className="underline-offset-2 hover:text-gold-100 hover:underline"
+          title={row.label}
+          className="block max-w-72 truncate underline-offset-2 hover:text-gold-100 hover:underline"
         >
           {row.label}
         </Link>
       ) : (
         // Deleted: the name is all that is left of it.
-        <span className="line-through decoration-red-300/40">{row.label}</span>
+        <span
+          className="block max-w-72 truncate line-through decoration-red-300/40"
+          title={row.label}
+        >
+          {row.label}
+        </span>
       )}
       {row.detail ? (
-        <span className="mt-0.5 block max-w-72 truncate text-xs text-gold-100/35">
+        <span
+          className="mt-0.5 block max-w-72 truncate text-xs text-gold-100/35"
+          title={row.detail}
+        >
           {row.detail}
         </span>
       ) : null}
@@ -119,7 +129,7 @@ export default async function ActivityPage(props: PageProps<"/activity">) {
       <AppHeader />
 
       <div className="flex-1 px-5 py-8 sm:px-8 sm:py-10">
-        <div className="mx-auto w-full max-w-5xl">
+        <div className="mx-auto w-full max-w-7xl">
           <h1 className="mb-1 text-sm font-semibold uppercase tracking-[0.18em] text-gold-200">
             Activity
           </h1>
@@ -144,8 +154,8 @@ export default async function ActivityPage(props: PageProps<"/activity">) {
             </div>
           ) : (
             <>
-              {/* Cards on a phone; the table from `md` up — as the dashboards do. */}
-              <ul className="flex flex-col gap-3 md:hidden">
+              {/* Cards below `lg`; the table above it — as the dashboards do. */}
+              <ul className="flex flex-col gap-3 lg:hidden">
                 {rows.map((row) => (
                   <li key={row.id} className="reydex-card rounded-2xl p-4">
                     <div className="flex flex-wrap items-center gap-2">
@@ -170,7 +180,7 @@ export default async function ActivityPage(props: PageProps<"/activity">) {
                 ))}
               </ul>
 
-              <div className="reydex-card hidden overflow-x-auto rounded-2xl md:block">
+              <div className="reydex-card hidden overflow-x-auto rounded-2xl lg:block">
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-gold-500/15 text-xs uppercase tracking-wider text-gold-100/45">
                     <tr>

@@ -121,7 +121,7 @@ export default async function CustomersPage(props: PageProps<"/customers">) {
       </AppHeader>
 
       <div className="flex-1 px-5 py-8 sm:px-8 sm:py-10">
-        <div className="mx-auto w-full max-w-5xl">
+        <div className="mx-auto w-full max-w-7xl">
           <CustomersSearch term={term} />
 
           {/*
@@ -174,7 +174,7 @@ export default async function CustomersPage(props: PageProps<"/customers">) {
             </div>
           ) : (
             <>
-              {/* Cards on a phone; the table from `md` up. */}
+              {/* Cards on a phone and a small laptop; the table from `lg` up. */}
               <RecordList>
                 {rows.map((row) => (
                   <RecordCard
@@ -204,7 +204,7 @@ export default async function CustomersPage(props: PageProps<"/customers">) {
                 ))}
               </RecordList>
 
-              <div className="reydex-card hidden overflow-x-auto rounded-2xl md:block">
+              <div className="reydex-card hidden overflow-x-auto rounded-2xl lg:block">
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-gold-500/15 text-xs uppercase tracking-wider text-gold-100/45">
                     <tr>
@@ -222,10 +222,17 @@ export default async function CustomersPage(props: PageProps<"/customers">) {
                         key={row.id}
                         className="border-b border-gold-500/8 last:border-0"
                       >
+                        {/*
+                         * Bounded and clipped, with the full name on hover: a
+                         * trading name runs to forty characters and an unbounded
+                         * cell makes this column as wide as the longest one,
+                         * taking the table past its container.
+                         */}
                         <td className="px-4 py-3 text-gold-100/85">
                           <Link
                             href={`/customers/${row.id}/edit`}
-                            className="underline-offset-2 hover:text-gold-100 hover:underline"
+                            title={row.name}
+                            className="block max-w-72 truncate underline-offset-2 hover:text-gold-100 hover:underline"
                           >
                             {row.name}
                           </Link>

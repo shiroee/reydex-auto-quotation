@@ -103,7 +103,7 @@ export default async function QuotationsPage(props: PageProps<"/quotations">) {
       </AppHeader>
 
       <div className="flex-1 px-5 py-8 sm:px-8 sm:py-10">
-        <div className="mx-auto w-full max-w-5xl">
+        <div className="mx-auto w-full max-w-7xl">
           <QuotationsSearch term={term} />
 
           {/*
@@ -159,7 +159,7 @@ export default async function QuotationsPage(props: PageProps<"/quotations">) {
             </div>
           ) : (
             <>
-              {/* Cards on a phone; the table from `md` up. */}
+              {/* Cards on a phone and a small laptop; the table from `lg` up. */}
               <RecordList>
                 {rows.map((row) => (
                   <RecordCard
@@ -194,19 +194,24 @@ export default async function QuotationsPage(props: PageProps<"/quotations">) {
               </RecordList>
 
               {/*
-               * `overflow-x-auto` rather than `hidden`: seven columns still run
-               * out of room somewhere above `md`, and scrolling the table is
-               * better than clipping the column the row controls sit in.
+               * `overflow-x-auto` is the backstop, not the plan: the seven
+               * columns are bounded to fit inside `max-w-7xl`, and this keeps a
+               * narrower window scrolling the table rather than clipping the
+               * column the row controls sit in.
                */}
-              <div className="reydex-card hidden overflow-x-auto rounded-2xl md:block">
+              <div className="reydex-card hidden overflow-x-auto rounded-2xl lg:block">
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-gold-500/15 text-xs uppercase tracking-wider text-gold-100/45">
                     <tr>
-                      <th className="px-4 py-3 font-medium">Ref. No.</th>
+                      {/*
+                       * The date sits under the reference rather than in a
+                       * column of its own: eight columns did not fit, and of the
+                       * eight these two are the pair that belong together.
+                       */}
+                      <th className="px-4 py-3 font-medium">Ref. No. / date</th>
                       <th className="px-4 py-3 font-medium">Customer</th>
                       <th className="px-4 py-3 font-medium">Subject</th>
                       <th className="px-4 py-3 font-medium">Type</th>
-                      <th className="px-4 py-3 font-medium">Date</th>
                       <th className="px-4 py-3 text-right font-medium">Total</th>
                       <th className="px-4 py-3 font-medium">Last change</th>
                       <th className="px-4 py-3" />
@@ -218,11 +223,20 @@ export default async function QuotationsPage(props: PageProps<"/quotations">) {
                         key={row.id}
                         className="border-b border-gold-500/8 last:border-0"
                       >
-                        <td className="px-4 py-3 font-mono text-xs text-gold-200">
+                        <td className="px-4 py-3 whitespace-nowrap font-mono text-xs text-gold-200">
                           {row.quoteNo}
+                          <span className="mt-0.5 block text-gold-100/35">
+                            {row.quoteDate}
+                          </span>
                         </td>
+                        {/* Bounded like the subject beside it, for the same reason. */}
                         <td className="px-4 py-3 text-gold-100/85">
-                          {row.customerName}
+                          <span
+                            className="block max-w-48 truncate"
+                            title={row.customerName}
+                          >
+                            {row.customerName}
+                          </span>
                         </td>
                         {/*
                          * Subjects run to a full sentence, so the cell is clamped
@@ -232,7 +246,7 @@ export default async function QuotationsPage(props: PageProps<"/quotations">) {
                          */}
                         <td className="px-4 py-3 text-gold-100/70">
                           <span
-                            className="block max-w-[16rem] truncate"
+                            className="block max-w-48 truncate"
                             title={row.subject}
                           >
                             {row.subject}
@@ -240,9 +254,6 @@ export default async function QuotationsPage(props: PageProps<"/quotations">) {
                         </td>
                         <td className="px-4 py-3 text-gold-100/55">
                           {TEMPLATE_LABEL[row.template] ?? row.template}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-gold-100/55">
-                          {row.quoteDate}
                         </td>
                         <td className="px-4 py-3 text-right whitespace-nowrap text-gold-100/85">
                           {formatPeso(row.totalAmount)}

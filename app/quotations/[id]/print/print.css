@@ -165,6 +165,13 @@
   color: var(--q-faint);
 }
 
+/*
+ * The rule and the meta separator are drawn as backgrounds, and printing drops
+ * backgrounds by default — Chrome's Save as PDF only paints them when the
+ * dialog's "Background graphics" box is ticked, which it is not out of the box.
+ * `print-color-adjust: exact` opts these two out of that economy pass, so the
+ * gold rule survives the PDF without the operator changing a setting.
+ */
 .q-lh-rule {
   margin-top: auto;
   height: 0.9mm;
@@ -174,6 +181,8 @@
     #e8c169 55%,
     rgb(0 0 0 / 0) 100%
   );
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 .q-lh-meta {
@@ -192,6 +201,8 @@
   border-radius: 50%;
   background: currentColor;
   flex-shrink: 0;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 /* ---------- Shared text ---------- */

@@ -25,7 +25,7 @@ export function Letterhead({
   if (!profile) return null;
 
   const registration = profile.tin
-    ? `${profile.vatRegistered ? "VAT" : "Non-VAT"} Registered · TIN ${profile.tin}`
+    ? `TIN ${profile.tin}`
     : null;
 
   return (

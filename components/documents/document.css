@@ -1,5 +1,11 @@
 /*
- * Print styling for generated quotations.
+ * Print styling for the documents this app generates — quotations and
+ * certificates of completion.
+ *
+ * Shared rather than colocated with either route: both print on the same A4
+ * sheet, under the same letterhead, through the same repeating-header frame, and
+ * a second copy of that machinery would drift from the first the first time one
+ * of them was adjusted.
  *
  * Two things drive the structure:
  *
@@ -531,6 +537,98 @@
 .q-sig-title {
   font-size: 10pt;
   color: var(--q-muted);
+}
+
+/* ---------- Certificate of completion ---------- */
+
+/*
+ * The certificate is one page of set wording, so unlike a quotation it is laid
+ * out down the sheet rather than flowed: a wide gap under the letterhead, the
+ * title, the two-column particulars, the body, then the two signature blocks.
+ */
+.q-cert {
+  padding-top: 12mm;
+}
+
+.q-cert-title {
+  text-align: center;
+  font-size: 16pt;
+  font-weight: 700;
+  /* Wide tracking is what makes it read as a certificate rather than a heading. */
+  letter-spacing: 0.12em;
+}
+
+/*
+ * PROJECT / CLIENT, as a real table so the colons line up under each other
+ * however long the labels get.
+ *
+ * Flush to the left margin. The original Word document insets the pair by about
+ * 22mm, which reads as a centred block rather than as the particulars of the
+ * certificate — they line up with the body paragraphs below instead.
+ */
+.q-cert-particulars {
+  margin: 12mm 0 0;
+  border-collapse: collapse;
+}
+
+.q-cert-particulars th {
+  text-align: left;
+  font-weight: 700;
+  vertical-align: top;
+  padding-bottom: 1mm;
+  /* Holds the colon column still whether the label is PROJECT or CLIENT. */
+  width: 26mm;
+}
+
+.q-cert-particulars td {
+  vertical-align: top;
+  padding-bottom: 1mm;
+}
+
+/* The colon gets a column of its own so it never drifts with the label. */
+.q-cert-colon {
+  width: 10mm;
+  padding-left: 4mm;
+  font-weight: 700;
+}
+
+.q-cert-value {
+  padding-left: 4mm;
+  font-weight: 700;
+}
+
+.q-cert-body {
+  margin-top: 14mm;
+}
+
+.q-cert-body p {
+  margin-top: 4mm;
+  text-align: justify;
+}
+
+.q-cert-body p:first-child {
+  margin-top: 0;
+}
+
+/*
+ * The two signature blocks. `break-inside: avoid` on each, so a certificate that
+ * somehow runs long never leaves a name stranded on a second page.
+ */
+.q-cert-signature {
+  margin-top: 12mm;
+  break-inside: avoid;
+}
+
+/* Nudged right, the way the accepting party's block sits on the original. */
+.q-cert-signature-accepting {
+  margin-top: 14mm;
+  margin-left: 62mm;
+}
+
+.q-cert-sig-label {
+  font-size: 10pt;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 /* ---------- Toolbar (screen only) ---------- */

@@ -1,4 +1,4 @@
-import "./print.css";
+import "@/components/documents/document.css";
 
 /**
  * Opening a quotation loads the document, its lines and its company profile, so

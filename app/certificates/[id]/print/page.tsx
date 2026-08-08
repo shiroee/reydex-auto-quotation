@@ -2,37 +2,44 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { CertificateLayout } from "@/components/certificates/certificate-layout";
 import { Letterhead } from "@/components/quotations/letterhead";
-import { ServiceProposalLayout } from "@/components/quotations/service-proposal-layout";
-import { SupplyLayout } from "@/components/quotations/supply-layout";
 import { db } from "@/db";
 import { requireSession } from "@/lib/auth/session";
 import { brandLogo, signatureImage } from "@/lib/brand";
-import { getQuotationForPrint } from "@/lib/quotations/service";
+import { isCertificateId } from "@/lib/certificates/form";
+import { getCertificateForPrint } from "@/lib/certificates/service";
 
 import { PrintButton } from "@/components/documents/print-button";
 import "@/components/documents/document.css";
 
 export const dynamic = "force-dynamic";
 
+/** `null` for both a malformed id and a missing row, so the page 404s either way. */
+async function load(id: string) {
+  return isCertificateId(id) ? getCertificateForPrint(db, id) : null;
+}
+
 export async function generateMetadata({
   params,
-}: PageProps<"/quotations/[id]/print">): Promise<Metadata> {
+}: PageProps<"/certificates/[id]/print">): Promise<Metadata> {
   const { id } = await params;
-  const data = await getQuotationForPrint(db, id);
+  const data = await load(id);
 
   return {
-    title: data ? `${data.quotation.quoteNo} — ${data.customer?.name ?? ""}` : "Quotation",
+    title: data
+      ? `${data.certificate.certNo} — ${data.certificate.clientName}`
+      : "Certificate of completion",
   };
 }
 
-export default async function QuotationPrintPage({
+export default async function CertificatePrintPage({
   params,
-}: PageProps<"/quotations/[id]/print">) {
+}: PageProps<"/certificates/[id]/print">) {
   await requireSession();
 
   const { id } = await params;
-  const data = await getQuotationForPrint(db, id);
+  const data = await load(id);
 
   if (!data) notFound();
 
@@ -43,22 +50,19 @@ export default async function QuotationPrintPage({
           Print or Save as PDF — A4, margins off (the letterhead is part of the
           page).
         </span>
-        <Link href="/quotations" className="q-back-link">
-          All quotations
+        <Link href="/certificates" className="q-back-link">
+          All certificates
         </Link>
         <PrintButton />
       </div>
 
       <article className="q-sheet">
         {/*
-         * The document is wrapped in a single-column layout table so the
-         * letterhead can live in a `thead`: browsers repeat a table header group
-         * at the top of every printed page *and* reserve its height in each
-         * page's flow, which padding on the sheet cannot do (padding applies
-         * once, to the first fragment). That reservation is what stops page two
-         * from printing underneath the letterhead. The empty `tfoot` reserves
-         * the bottom gap the same way. `role="presentation"` because none of
-         * this is tabular data.
+         * The same single-column frame the quotation uses: the letterhead lives
+         * in a `thead` so browsers repeat it — and reserve its height — on every
+         * printed page, and the empty `tfoot` reserves the bottom gap the same
+         * way. A certificate is one page today, but it is laid out to survive
+         * becoming two. See components/documents/document.css.
          */}
         <table className="q-frame" role="presentation">
           <thead>
@@ -71,11 +75,11 @@ export default async function QuotationPrintPage({
           <tbody>
             <tr>
               <td className="q-frame-body">
-                {data.quotation.template === "service_proposal" ? (
-                  <ServiceProposalLayout {...data} signature={signatureImage} />
-                ) : (
-                  <SupplyLayout {...data} signature={signatureImage} />
-                )}
+                <CertificateLayout
+                  certificate={data.certificate}
+                  profile={data.profile}
+                  signature={signatureImage}
+                />
               </td>
             </tr>
           </tbody>

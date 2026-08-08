@@ -14,6 +14,7 @@ export type ActivityAction = (typeof ACTION)[number];
 
 export const ENTITY = [
   "quotation",
+  "certificate",
   "customer",
   "item",
   "quotation_type",
@@ -37,6 +38,7 @@ export const ACTION_LABEL: Record<ActivityAction, string> = {
 
 export const ENTITY_LABEL: Record<ActivityEntityName, string> = {
   quotation: "Quotation",
+  certificate: "Certificate",
   customer: "Customer",
   item: "Item",
   quotation_type: "Quotation type",
@@ -46,6 +48,7 @@ export const ENTITY_LABEL: Record<ActivityEntityName, string> = {
 /** Plural, for the filter control. */
 export const ENTITY_PLURAL: Record<ActivityEntityName, string> = {
   quotation: "Quotations",
+  certificate: "Certificates",
   customer: "Customers",
   item: "Items",
   quotation_type: "Quotation types",
@@ -74,6 +77,9 @@ export function entityHref(
   switch (entity) {
     case "quotation":
       return `/quotations/${entityId}/print`;
+    // Like a quotation, the printable sheet is the thing worth opening.
+    case "certificate":
+      return `/certificates/${entityId}/print`;
     case "customer":
       return `/customers/${entityId}/edit`;
     case "item":

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
+  LuAward,
   LuFileText,
   LuHistory,
   LuLayoutTemplate,
@@ -25,13 +26,19 @@ export const metadata: Metadata = {
 // Session-dependent, so never prerendered.
 export const dynamic = "force-dynamic";
 
-/** The four things kept here, each with what it is for. */
+/** The things kept here, each with what it is for. */
 const DESTINATIONS = [
   {
     href: "/quotations",
     label: "Quotations",
     hint: "Everything raised so far",
     Icon: LuFileText,
+  },
+  {
+    href: "/certificates",
+    label: "Certificates",
+    hint: "Completion certificates for finished jobs",
+    Icon: LuAward,
   },
   {
     href: "/customers",

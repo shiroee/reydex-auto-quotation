@@ -5,9 +5,9 @@ import { PageSkeleton, SkeletonBar } from "@/components/page-skeleton";
  * Users belongs in the grid, so it has the same beat as the listings — hence its
  * own bones rather than the listing ones: a welcome card, then the tiles.
  *
- * Six tiles, the count a non-administrator sees. The seventh appearing when the
- * page lands grows the grid by one row; guessing seven and dropping to six would
- * shrink it, and a placeholder that overstates is the worse of the two.
+ * Seven tiles, the count a non-administrator sees. The eighth appearing when the
+ * page lands grows the grid by one row; guessing eight and dropping to seven
+ * would shrink it, and a placeholder that overstates is the worse of the two.
  */
 export default function LoadingDashboard() {
   return (
@@ -22,7 +22,7 @@ export default function LoadingDashboard() {
       </div>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        {Array.from({ length: 6 }, (_, index) => (
+        {Array.from({ length: 7 }, (_, index) => (
           <div
             key={index}
             className="reydex-card flex items-center gap-3.5 rounded-xl px-4 py-3.5"

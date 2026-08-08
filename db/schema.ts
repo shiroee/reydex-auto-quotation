@@ -357,6 +357,81 @@ export const quotationExclusions = pgTable(
 );
 
 /* -------------------------------------------------------------------------- */
+/* Certificates of completion                                                 */
+/* -------------------------------------------------------------------------- */
+
+/** Feeds the certificate reference; see `nextCertificateNo`. */
+export const certificateNoSeq = pgSequence("certificate_no_seq", {
+  startWith: 1,
+  increment: 1,
+});
+
+/**
+ * The one-page certificate issued once a job is finished and signed off — the
+ * document a client's fire-safety file needs, and the one the Bureau of Fire
+ * Protection asks for.
+ *
+ * Deliberately unjoined: no `customer_id`, no `quotation_id`. Certificates get
+ * raised for work that was never quoted here — a subcontracted job, a site
+ * inherited mid-contract — and requiring a customer record first would mean
+ * inventing one to print a certificate. The cost is real and worth stating: the
+ * same client will be spelled two ways across a year of certificates, and
+ * nothing ties a certificate back to the quotation it completes.
+ *
+ * The wording is not stored. Every certificate prints the same four paragraphs
+ * from `components/certificates/certificate-layout.tsx`, with these columns
+ * dropped into the blanks, so a change of wording is one edit to the layout
+ * rather than a backfill across every row.
+ */
+export const certificates = pgTable(
+  "certificates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    certNo: text("cert_no").notNull(),
+
+    /** Free text, as printed after "CLIENT :". */
+    clientName: text("client_name").notNull(),
+    /** As printed after "PROJECT :", e.g. "FIRE DETECTION AND ALARM SYSTEM". */
+    projectTitle: text("project_title").notNull(),
+    /** Where the work was done: "Subic, Zambales". */
+    location: text("location").notNull(),
+
+    completionDate: date("completion_date").notNull(),
+    issueDate: date("issue_date").notNull().default(sql`CURRENT_DATE`),
+    /** Where the certificate was issued, which need not be where the work was. */
+    issuePlace: text("issue_place").notNull(),
+
+    /**
+     * Who inspected the works and found them satisfactory. Often the client, but
+     * not always — the sample certificate names the mall operator rather than
+     * the branch. Falls back to the client name when blank.
+     */
+    inspectedBy: text("inspected_by"),
+    /** Printed under the second signature rule; falls back to the client name. */
+    acceptedBy: text("accepted_by"),
+
+    /** Both fall back to the company profile's signatory when blank. */
+    signatoryName: text("signatory_name"),
+    signatoryTitle: text("signatory_title"),
+
+    /** neon_auth.user.id — intentionally no FK, see the note at the top. */
+    preparedByUserId: text("prepared_by_user_id"),
+
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("certificates_cert_no_key").on(t.certNo),
+    index("certificates_client_idx").on(t.clientName),
+    index("certificates_issue_date_idx").on(t.issueDate),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
 /* Reusable boilerplate                                                       */
 /* -------------------------------------------------------------------------- */
 
@@ -410,13 +485,14 @@ export const activityAction = pgEnum("activity_action", [
   "delete",
 ]);
 
-/** The five things a dashboard lists, and therefore the five things acted on. */
+/** The things a dashboard lists, and therefore the things acted on. */
 export const activityEntity = pgEnum("activity_entity", [
   "quotation",
   "customer",
   "item",
   "quotation_type",
   "user",
+  "certificate",
 ]);
 
 /**
@@ -531,5 +607,7 @@ export type Customer = typeof customers.$inferSelect;
 export type Quotation = typeof quotations.$inferSelect;
 export type QuotationItem = typeof quotationItems.$inferSelect;
 export type CompanyProfile = typeof companyProfile.$inferSelect;
+export type Certificate = typeof certificates.$inferSelect;
+export type NewCertificate = typeof certificates.$inferInsert;
 export type ActivityEntry = typeof activityLog.$inferSelect;
 export type NewActivityEntry = typeof activityLog.$inferInsert;

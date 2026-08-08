@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  LuAward,
   LuFileText,
   LuHistory,
   LuHouse,
@@ -20,6 +21,9 @@ import {
 const SECTIONS = [
   { href: "/dashboard", label: "Home", Icon: LuHouse },
   { href: "/quotations", label: "Quotations", Icon: LuFileText },
+  // Next to quotations: the two documents the business issues, in the order a
+  // job passes through them — quote the work, then certify it finished.
+  { href: "/certificates", label: "Certificates", Icon: LuAward },
   { href: "/customers", label: "Customers", Icon: LuUsers },
   { href: "/quotation-types", label: "Quotation types", Icon: LuLayoutTemplate },
   { href: "/items", label: "Items", Icon: LuPackage },

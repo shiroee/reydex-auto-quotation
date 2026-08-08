@@ -9,6 +9,7 @@ import { requireSession } from "@/lib/auth/session";
 import { brandLogo, signatureImage } from "@/lib/brand";
 import { isCertificateId } from "@/lib/certificates/form";
 import { getCertificateForPrint } from "@/lib/certificates/service";
+import { documentFileName } from "@/lib/documents/filename";
 
 import { PrintButton } from "@/components/documents/print-button";
 import "@/components/documents/document.css";
@@ -26,10 +27,21 @@ export async function generateMetadata({
   const { id } = await params;
   const data = await load(id);
 
+  /*
+   * `absolute` so the root layout's "%s · Reydex Quotations" template is not
+   * appended: the title is what Save as PDF offers as the filename, and a
+   * certificate should not save under the word "Quotations".
+   */
   return {
-    title: data
-      ? `${data.certificate.certNo} — ${data.certificate.clientName}`
-      : "Certificate of completion",
+    title: {
+      absolute: data
+        ? documentFileName(
+            "Reydex COC",
+            data.certificate.certNo,
+            data.certificate.clientName,
+          )
+        : "Reydex COC",
+    },
   };
 }
 

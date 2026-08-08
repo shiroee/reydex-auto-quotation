@@ -8,6 +8,7 @@ import { SupplyLayout } from "@/components/quotations/supply-layout";
 import { db } from "@/db";
 import { requireSession } from "@/lib/auth/session";
 import { brandLogo, signatureImage } from "@/lib/brand";
+import { documentFileName } from "@/lib/documents/filename";
 import { getQuotationForPrint } from "@/lib/quotations/service";
 
 import { PrintButton } from "@/components/documents/print-button";
@@ -21,8 +22,21 @@ export async function generateMetadata({
   const { id } = await params;
   const data = await getQuotationForPrint(db, id);
 
+  /*
+   * `absolute` so the root layout's "%s · Reydex Quotations" template is not
+   * appended: the title is what Save as PDF offers as the filename, and the
+   * suffix would land in it. See lib/documents/filename.ts.
+   */
   return {
-    title: data ? `${data.quotation.quoteNo} — ${data.customer?.name ?? ""}` : "Quotation",
+    title: {
+      absolute: data
+        ? documentFileName(
+            "Reydex Quotation",
+            data.quotation.quoteNo,
+            data.customer?.name ?? "",
+          )
+        : "Reydex Quotation",
+    },
   };
 }
 

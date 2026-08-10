@@ -254,10 +254,18 @@
   left: 0;
 }
 
-/* A continuation line under a bullet — the chemical formula, the temperature. */
+/*
+ * A continuation line under a bullet — the chemical formula, the pressures.
+ *
+ * Set a shade smaller than the bullet above it, as on the original, and for a
+ * practical reason too: "MONOAMMONIUM" in bold caps lands within a millimetre of
+ * this column's width, so at full size it breaks mid-word on some roundings and
+ * not others. The margin here is what keeps the chemical name whole.
+ */
 .decal-sub {
   display: block;
   font-weight: 700;
+  font-size: 0.92em;
   padding-left: 0.35em;
 }
 

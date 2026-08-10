@@ -6,12 +6,15 @@ import { useId, useMemo, useState } from "react";
 import { DecalArtwork, type DecalFill } from "@/components/decals/decal";
 import type { Decal } from "@/lib/decals/catalogue";
 import {
+  DEFAULT_GAP_MM,
   DEFAULT_WIDTH_MM,
+  MAX_GAP_MM,
   MAX_WIDTH_MM,
   MIN_WIDTH_MM,
   PRINTER_MARGIN_MM,
   SIZE_PRESETS,
   bestOrientation,
+  clampGap,
   clampWidth,
   planSheet,
   sheetsFor,
@@ -31,6 +34,7 @@ import {
  */
 export function PrintSheet({ decal }: { decal: Decal }) {
   const [widthMm, setWidthMm] = useState(DEFAULT_WIDTH_MM);
+  const [gapMm, setGapMm] = useState(DEFAULT_GAP_MM);
   const [copies, setCopies] = useState(2);
   const [fill, setFill] = useState<DecalFill>({});
   /** `null` until the operator picks one, so it can track the width. */
@@ -39,16 +43,25 @@ export function PrintSheet({ decal }: { decal: Decal }) {
 
   const fieldId = useId();
 
-  const orientation = chosenOrientation ?? bestOrientation(widthMm);
+  const orientation = chosenOrientation ?? bestOrientation(widthMm, gapMm);
   const plan = useMemo(
-    () => planSheet(widthMm, orientation),
-    [widthMm, orientation],
+    () => planSheet(widthMm, orientation, gapMm),
+    [widthMm, orientation, gapMm],
   );
 
   const sheets = sheetsFor(copies, plan.perSheet);
   const onLastSheet = plan.perSheet
     ? copies - (sheets - 1) * plan.perSheet
     : 0;
+
+  /*
+   * What the cutting gap costs. Widening it eats the printable area like
+   * anything else, and the point at which it drops a whole column is invisible
+   * from the control — so it is said out loud rather than left to be noticed on
+   * the second sheet of a long run.
+   */
+  const butted = planSheet(widthMm, orientation, 0).perSheet;
+  const costOfGap = butted - plan.perSheet;
 
   /*
    * Every decal to draw, as a flat list chopped into sheets. The last sheet is
@@ -77,6 +90,7 @@ export function PrintSheet({ decal }: { decal: Decal }) {
           "--ds-decal-w": `${plan.decal.width}mm`,
           "--ds-margin-x": `${plan.margin.x}mm`,
           "--ds-margin-y": `${plan.margin.y}mm`,
+          "--ds-gap": `${plan.gap}mm`,
         } as React.CSSProperties
       }
     >
@@ -119,6 +133,19 @@ export function PrintSheet({ decal }: { decal: Decal }) {
             onChange={(event) =>
               setWidthMm(clampWidth(Number(event.target.value)))
             }
+          />
+        </label>
+
+        <label className="ds-control ds-control-narrow" htmlFor={`${fieldId}-gap`}>
+          Cutting gap (mm)
+          <input
+            id={`${fieldId}-gap`}
+            type="number"
+            min={0}
+            max={MAX_GAP_MM}
+            step={1}
+            value={gapMm}
+            onChange={(event) => setGapMm(clampGap(Number(event.target.value)))}
           />
         </label>
 
@@ -205,8 +232,15 @@ export function PrintSheet({ decal }: { decal: Decal }) {
           </strong>{" "}
           In the print dialog set <strong>Margins: None</strong> and{" "}
           <strong>Scale: 100%</strong> — on any other setting the browser shrinks
-          the sheet to fit and the decal comes out undersized. The grid already
-          keeps {PRINTER_MARGIN_MM}mm clear of every edge for the printer.
+          the sheet to fit and the decal comes out undersized. The grid keeps{" "}
+          {PRINTER_MARGIN_MM}mm clear of every edge for the printer
+          {plan.gap > 0 ? `, and ${plan.gap}mm between decals to cut down` : ""}.
+          {costOfGap > 0 ? (
+            <>
+              {" "}
+              Closing the gap would fit {costOfGap} more per sheet.
+            </>
+          ) : null}
         </p>
       ) : (
         <p className="ds-note ds-warn" role="status">

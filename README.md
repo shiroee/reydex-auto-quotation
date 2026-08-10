@@ -282,8 +282,16 @@ frame of the artwork the shop prints today, measured off the scan.
 3 mm the print head cannot reach on each edge. Packing to the paper edge
 occasionally wins a column the printer cannot actually put ink on, and that
 failure is only discovered once the sheet is printed with its outer decals
-shaved off. At the default size that is two per A4 landscape, with 7.5 mm to
-spare each side.
+shaved off.
+
+**Decals are separated by a cutting gap**, 5 mm by default. Butted together they
+share a cut line, which is tidy on paper and unforgiving in practice: one
+guillotine pass a millimetre off centre shaves the black frame off whichever
+decal it strayed into. The gap turns one exact cut into two forgiving ones. It is
+charged against the printable area like anything else, so a wider gap can cost a
+column — the sheet says so when it does rather than capping the gap quietly. At
+the default size and gap that is two per A4 landscape, with 5 mm to spare each
+side.
 
 > **Set the print dialog to Margins: None and Scale: 100%.** On any other
 > setting the browser shrinks the sheet to fit its own margins, and a decal that

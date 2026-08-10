@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DEFAULT_GAP_MM,
   DEFAULT_WIDTH_MM,
+  MAX_GAP_MM,
   MAX_WIDTH_MM,
   MIN_WIDTH_MM,
   PRINTER_MARGIN_MM,
   bestOrientation,
+  clampGap,
   clampWidth,
   decalHeight,
   planSheet,
@@ -24,6 +27,22 @@ describe("decalHeight", () => {
 
   it("scales the height with the width", () => {
     expect(decalHeight(70.5)).toBeCloseTo(95, 1);
+  });
+});
+
+describe("clampGap", () => {
+  it("keeps a sensible gap as it is", () => {
+    expect(clampGap(5)).toBe(5);
+    expect(clampGap(0)).toBe(0);
+  });
+
+  it("holds the ends of the range", () => {
+    expect(clampGap(-4)).toBe(0);
+    expect(clampGap(500)).toBe(MAX_GAP_MM);
+  });
+
+  it("falls back to the default when handed nothing usable", () => {
+    expect(clampGap(Number.NaN)).toBe(DEFAULT_GAP_MM);
   });
 });
 
@@ -50,9 +69,33 @@ describe("planSheet", () => {
     expect(plan.columns).toBe(2);
     expect(plan.rows).toBe(1);
     expect(plan.perSheet).toBe(2);
-    // 297 - 2 x 141 = 15, so 7.5mm each side.
-    expect(plan.margin.x).toBeCloseTo(7.5, 1);
+    expect(plan.gap).toBe(DEFAULT_GAP_MM);
+    // 297 - (2 x 141 + 5 of cutting gap) = 10, so 5mm each side.
+    expect(plan.margin.x).toBeCloseTo(5, 1);
     expect(plan.margin.y).toBeCloseTo(10, 1);
+  });
+
+  /*
+   * The default gap has to be affordable at the default size, or the shop's
+   * everyday sheet quietly drops from two decals to one.
+   */
+  it("keeps two up at the reference size with the cutting gap in place", () => {
+    expect(planSheet(DEFAULT_WIDTH_MM, "landscape", 0).perSheet).toBe(2);
+    expect(planSheet(DEFAULT_WIDTH_MM, "landscape", DEFAULT_GAP_MM).perSheet).toBe(2);
+    // The block plus its gap still clears the printer's edge.
+    expect(
+      planSheet(DEFAULT_WIDTH_MM, "landscape").margin.x,
+    ).toBeGreaterThanOrEqual(PRINTER_MARGIN_MM);
+  });
+
+  it("charges the gap against the printable area, costing a column when it must", () => {
+    const roomy = planSheet(DEFAULT_WIDTH_MM, "landscape", 0);
+    const generous = planSheet(DEFAULT_WIDTH_MM, "landscape", MAX_GAP_MM);
+
+    expect(roomy.perSheet).toBe(2);
+    // 2 x 141 + 20 = 302mm, past the 291mm the printer can reach.
+    expect(generous.perSheet).toBe(1);
+    expect(generous.gap).toBe(MAX_GAP_MM);
   });
 
   /*
@@ -77,12 +120,16 @@ describe("planSheet", () => {
   });
 
   it("packs small decals into a grid", () => {
-    // 70mm wide is 94.3mm tall: two across and three down inside A4 portrait.
+    // 70mm wide is 94.3mm tall: two across and two down inside A4 portrait
+    // once the cutting gap is taken out of the printable area.
     const plan = planSheet(70, "portrait");
 
     expect(plan.columns).toBe(2);
-    expect(plan.rows).toBe(3);
-    expect(plan.perSheet).toBe(6);
+    expect(plan.rows).toBe(2);
+    expect(plan.perSheet).toBe(4);
+
+    // Butted together the same decal gets a third row.
+    expect(planSheet(70, "portrait", 0).rows).toBe(3);
   });
 
   it("leaves a gutter between decals when asked for one", () => {

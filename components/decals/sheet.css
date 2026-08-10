@@ -18,6 +18,7 @@
   --ds-decal-w: 141mm;
   --ds-margin-x: 8mm;
   --ds-margin-y: 10mm;
+  --ds-gap: 5mm;
 
   min-height: 100dvh;
   background: #52525b;
@@ -136,6 +137,12 @@
 
 /* ---------- The sheet ---------- */
 
+/*
+ * The grid gap is cutting space, not styling: butted together, two decals share
+ * one cut line and a guillotine pass a millimetre off centre shaves the frame
+ * off whichever decal it strayed into. The margins already account for it — see
+ * `planSheet` — so the block stays centred whatever the gap.
+ */
 .ds-sheet {
   width: var(--ds-sheet-w);
   height: var(--ds-sheet-h);
@@ -145,6 +152,7 @@
   padding: var(--ds-margin-y) var(--ds-margin-x);
   display: grid;
   grid-template-columns: repeat(var(--ds-cols), var(--ds-decal-w));
+  gap: var(--ds-gap);
   align-content: start;
   justify-content: center;
   box-sizing: border-box;

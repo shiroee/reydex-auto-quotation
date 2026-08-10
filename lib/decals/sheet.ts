@@ -35,6 +35,21 @@ export const MIN_WIDTH_MM = 70;
 export const MAX_WIDTH_MM = 200;
 
 /**
+ * White space left between neighbouring decals, for the guillotine.
+ *
+ * Butted up against each other the decals share a cut line, which is tidy on
+ * paper and unforgiving in practice: one pass a millimetre off centre shaves the
+ * black frame off the decal on that side. A few millimetres of slack turns one
+ * exact cut into two forgiving ones.
+ *
+ * 5mm is what the reference layout can afford — two 141mm decals plus a 5mm gap
+ * is 287mm, leaving 5mm of margin each side of a 297mm sheet, still clear of the
+ * printer's 3mm edge.
+ */
+export const DEFAULT_GAP_MM = 5;
+export const MAX_GAP_MM = 20;
+
+/**
  * Widest unprintable edge on the shop's Epson L3250. Epson quotes 3 mm on all
  * four sides for plain A4; anything inside that is not reached by the head, so a
  * layout that needs it silently comes out scaled down or clipped.
@@ -54,6 +69,8 @@ export type SheetPlan = {
   perSheet: number;
   /** Even margin left around the block once the grid is centred. */
   margin: { x: number; y: number };
+  /** Cutting space between neighbours, as applied. */
+  gap: number;
   /** True when at least one decal fits inside the printable area. */
   fits: boolean;
 };
@@ -67,6 +84,11 @@ export function clampWidth(widthMm: number): number {
   return Math.min(MAX_WIDTH_MM, Math.max(MIN_WIDTH_MM, Math.round(widthMm)));
 }
 
+export function clampGap(gapMm: number): number {
+  if (!Number.isFinite(gapMm)) return DEFAULT_GAP_MM;
+  return Math.min(MAX_GAP_MM, Math.max(0, Math.round(gapMm)));
+}
+
 /**
  * Lay a grid of decals out on A4 in one orientation.
  *
@@ -77,17 +99,19 @@ export function clampWidth(widthMm: number): number {
  * the sheet is printed. A column given up here costs a little paper; the other
  * way costs the run.
  *
- * The gap between decals is deliberately zero: they are cut apart with a
- * guillotine along the frame, so a gutter would only cost sheet area. `gapMm`
- * exists for the caller that wants crop room, not as a default.
+ * `gapMm` is the cutting space between neighbours. It is charged against the
+ * printable area like anything else, so asking for a wider gap can cost a
+ * column — which is the honest answer, and the caller reports the resulting
+ * count rather than quietly capping the gap.
  */
 export function planSheet(
   widthMm: number,
   orientation: Orientation,
-  gapMm = 0,
+  gapMm = DEFAULT_GAP_MM,
 ): SheetPlan {
   const width = clampWidth(widthMm);
   const height = decalHeight(width);
+  const gap = clampGap(gapMm);
 
   const sheet =
     orientation === "landscape"
@@ -99,11 +123,11 @@ export function planSheet(
     height: sheet.height - 2 * PRINTER_MARGIN_MM,
   };
 
-  const columns = fitCount(printable.width, width, gapMm);
-  const rows = fitCount(printable.height, height, gapMm);
+  const columns = fitCount(printable.width, width, gap);
+  const rows = fitCount(printable.height, height, gap);
 
-  const blockWidth = columns * width + Math.max(0, columns - 1) * gapMm;
-  const blockHeight = rows * height + Math.max(0, rows - 1) * gapMm;
+  const blockWidth = columns * width + Math.max(0, columns - 1) * gap;
+  const blockHeight = rows * height + Math.max(0, rows - 1) * gap;
 
   // Centred on the paper, so the unused printable margin is shared evenly.
   const margin = {
@@ -121,6 +145,7 @@ export function planSheet(
     rows,
     perSheet,
     margin,
+    gap,
     fits: perSheet > 0,
   };
 }
@@ -130,7 +155,10 @@ export function planSheet(
  *
  * Ties go to portrait, which is the way paper goes into the tray.
  */
-export function bestOrientation(widthMm: number, gapMm = 0): Orientation {
+export function bestOrientation(
+  widthMm: number,
+  gapMm = DEFAULT_GAP_MM,
+): Orientation {
   const portrait = planSheet(widthMm, "portrait", gapMm);
   const landscape = planSheet(widthMm, "landscape", gapMm);
 

@@ -250,6 +250,63 @@ Some behaviour that is deliberate rather than incidental:
 - Print CSS names Calibri and Times New Roman first, so output on a Windows
   machine matches the original Word documents.
 
+## Decals
+
+The cylinder labels — the sticker on the extinguisher body — at **`/decals`**.
+Four of them: dry chemical, carbon dioxide, HFC 236FA and AFFF. Pick one, set the
+width to suit the cylinder, set how many, print.
+
+The point is that they print from anywhere the site can be reached. They used to
+live as Word and PDF files on one machine, which meant the decals could only be
+printed from that machine.
+
+**They are drawn, not scanned.** Only the parts that are genuinely pictures are
+images (`public/decals/`): the Survivor crest, the LION wordmark in its three
+colours, the four operating photographs, the fire-class letters and pictograms,
+and the BPS certification mark. All of them were cut out of the original
+artwork. Everything else — every word on the label — is set in the document, so
+it prints at the printer's resolution rather than the scanner's 200 dpi, and a
+chemical name can differ per decal without editing a picture.
+
+That was not a preference. Only the dry-chemical artwork exists as a flat image;
+the other three are that same scan with Word text boxes patched over the title
+and the chemical content, so there was no CO2, HFC or AFFF image to ship.
+
+**One number sets the size.** `--decal-w` is a width in millimetres and
+everything inside is expressed in `em` off it, so the same drawing prints a label
+for a 1 kg cylinder and for a 50 lb cart unit. Nothing inside `decal.css` may use
+`px` or `rem`, or it will stop scaling. The default of **141 × 190 mm** is the
+frame of the artwork the shop prints today, measured off the scan.
+
+**The grid is fitted to the printable area**, not to the paper — A4 less the
+3 mm the print head cannot reach on each edge. Packing to the paper edge
+occasionally wins a column the printer cannot actually put ink on, and that
+failure is only discovered once the sheet is printed with its outer decals
+shaved off. At the default size that is two per A4 landscape, with 7.5 mm to
+spare each side.
+
+> **Set the print dialog to Margins: None and Scale: 100%.** On any other
+> setting the browser shrinks the sheet to fit its own margins, and a decal that
+> comes out at 95% no longer matches the cylinder it was sized for. The sheet
+> reminds the operator of this above the preview.
+
+Capacity, full weight, date and serial can be typed in and printed onto the
+label, or left blank for the ruled space the shop writes on by hand.
+
+### Adding or correcting one
+
+`lib/decals/catalogue.ts` is the whole catalogue — a new chemical is an entry in
+`DECALS` plus, at most, a new wordmark in `public/decals/`. There is no database
+table and no upload path: there are four, and they change when a licence or the
+artwork changes rather than in the course of a day's work.
+
+> **AFFF's chemical content reads `DICHLOUROTRIFLUOROETHANE`**, transcribed from
+> the source decal as printed. That is HCFC-123, not AFFF — the AFFF artwork was
+> patched from a copy of the HCFC-123 decal and the line was left behind, and the
+> source misspells it too. It is reproduced rather than quietly corrected,
+> because what a decal declares its cylinder to contain is not something to
+> guess at. Correcting it is one line in the catalogue.
+
 ## How auth is wired
 
 | File                              | Role                                                         |

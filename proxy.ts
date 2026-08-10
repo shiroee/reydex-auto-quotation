@@ -39,6 +39,7 @@ export const config = {
     "/customers/:path*",
     "/quotation-types/:path*",
     "/items/:path*",
+    "/decals/:path*",
     "/users/:path*",
     "/activity/:path*",
   ],

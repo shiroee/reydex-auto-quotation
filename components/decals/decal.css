@@ -1,0 +1,582 @@
+/*
+ * The cylinder decal, drawn at true physical size.
+ *
+ * Three things drive the structure:
+ *
+ * 1. **One variable sets the size.** `--decal-w` is a length in millimetres;
+ *    the height follows from the artwork's aspect ratio, and every rule inside
+ *    is expressed in `em` off a root font-size derived from that width. Set the
+ *    width and the whole label — type, rules, artwork, gaps — scales with it, so
+ *    a 1 kg cylinder's decal is the same drawing as a 50 lb one, smaller. Nothing
+ *    inside may use `px` or `rem`, or it will stop scaling.
+ *
+ * 2. **The colour has to survive the print dialog.** Chrome does not paint
+ *    backgrounds unless "Background graphics" is ticked, which it is not by
+ *    default — and on this label the red title band, the blue pictogram tiles and
+ *    the class letters are not decoration, they are what tells an operator which
+ *    cylinder they are holding. Everything coloured therefore opts out with
+ *    `print-color-adjust: exact`.
+ *
+ * 3. **The text is text.** The source artwork is a 200 dpi scan; only the parts
+ *    that are genuinely pictures (crest, wordmark, the four operating photographs,
+ *    the class pictograms, the certification badge) are images here. The rest is
+ *    set in the document so it prints at the printer's resolution and can carry
+ *    a different chemical name per variant without a trip through Photoshop.
+ */
+
+.decal {
+  /* Set inline by the component; this is only a sane fallback. */
+  --decal-w: 141mm;
+  --decal-h: 190mm;
+
+  /*
+   * The type scale. Calibrated against the source: body copy on a 141 mm decal
+   * measures about 2.8 mm, i.e. the width over fifty.
+   */
+  font-size: calc(var(--decal-w) / 50);
+
+  --ink: #000;
+  --rule: #000;
+  --red: #c8102e;
+  --green: #1a6b34;
+  --navy: #131f45;
+  --tile: #2f3b8f;
+
+  width: var(--decal-w);
+  height: var(--decal-h);
+  box-sizing: border-box;
+  border: 0.14em solid var(--rule);
+  background: #fff;
+  color: var(--ink);
+  font-family: Arial, Helvetica, "Liberation Sans", sans-serif;
+  line-height: 1.12;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* A decal split over two pages is scrap. */
+  break-inside: avoid;
+}
+
+.decal * {
+  box-sizing: border-box;
+}
+
+/*
+ * The decal carries its own reset rather than relying on Tailwind's preflight.
+ * It is a document with a fixed height whose bands are sized as percentages of
+ * it, so a stray default margin on a `p` does not merely look wrong — it pushes
+ * a band past its share and the foot off the bottom of the label. `:where()`
+ * keeps the specificity at zero, so every rule below still wins.
+ */
+.decal :where(p, h1, h2, h3, ul, li, figure) {
+  margin: 0;
+  padding: 0;
+}
+
+.decal :where(ul) {
+  list-style: none;
+}
+
+/*
+ * No image may exceed the box it is placed in. Left unbounded, a percentage
+ * height inside a flex item is circular — the item's height depends on the
+ * content, so the browser gives up and uses the image's natural pixel size,
+ * which for the corporate lockup is 970px and bursts the label apart.
+ */
+.decal :where(img) {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/*
+ * The four bands hold the share of the height they are given. `min-height: 0`
+ * is what makes that true: a flex item's automatic minimum size is its content,
+ * so without this any band whose content runs long grows instead of clipping,
+ * and every band below it is pushed down.
+ */
+.decal > * {
+  min-height: 0;
+}
+
+/* ---------- Title band ---------- */
+
+/*
+ * 10% of the decal's height, matching the original. `flex: 0 0 <pct>` rather
+ * than a height in `em`, so the four bands always add up to the sheet exactly.
+ */
+.decal-band {
+  flex: 0 0 10%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 0.14em solid var(--rule);
+  padding: 0 0.5em;
+  text-align: center;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.decal-band-navy {
+  background: var(--navy);
+  color: #fff;
+}
+
+.decal-title {
+  font-size: 3.3em;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+
+.decal-band-red .decal-title {
+  color: var(--red);
+}
+
+.decal-band-green .decal-title {
+  color: var(--green);
+}
+
+.decal-subtitle {
+  margin-top: 0.15em;
+  font-size: 1.55em;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ---------- Brand row: crest and wordmark ---------- */
+
+.decal-brand {
+  flex: 0 0 15.2%;
+  display: flex;
+  align-items: center;
+  gap: 1.2em;
+  padding: 0.5em 1em;
+  border-bottom: 0.14em solid var(--rule);
+}
+
+.decal-crest {
+  height: 100%;
+  width: auto;
+  object-fit: contain;
+}
+
+/*
+ * The wordmark takes the rest of the row. `min-width: 0` so it may shrink inside
+ * the flex row rather than pushing the crest out of the decal.
+ */
+.decal-wordmark {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  object-fit: contain;
+  object-position: left center;
+}
+
+/* ---------- Middle: three columns ---------- */
+
+.decal-grid {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+  border-bottom: 0.14em solid var(--rule);
+}
+
+.decal-col {
+  padding: 0.6em 0.5em;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Tighter side padding than its neighbours: the narrowest column, and the one
+ * carrying the longest unbreakable words ("MONOAMMONIUM"). */
+.decal-specs {
+  flex: 0 0 20.8%;
+  display: flex;
+  flex-direction: column;
+  border-right: 0.14em solid var(--rule);
+  padding-left: 0.35em;
+  padding-right: 0.35em;
+}
+
+.decal-centre {
+  flex: 0 0 54.6%;
+  display: flex;
+  flex-direction: column;
+  border-right: 0.14em solid var(--rule);
+  padding: 0.4em 0.45em 0.3em;
+}
+
+.decal-maint {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.decal-heading {
+  font-size: 1.2em;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.01em;
+}
+
+/* ---------- Specifications ---------- */
+
+/*
+ * The bulleted lines. `list-style: none` with an explicit marker, because the
+ * original uses a mid-height dot tight against the text and a real `disc` sits
+ * too low and too far out at this size.
+ */
+.decal-list {
+  list-style: none;
+  margin: 0.55em 0 0;
+  padding: 0;
+}
+
+.decal-list li {
+  position: relative;
+  padding-left: 0.75em;
+  margin-bottom: 0.3em;
+  font-weight: 700;
+  font-size: 0.98em;
+  /*
+   * Chemical names are long single words — DICHLOUROTRIFLUOROETHANE is 24
+   * characters into a 27mm column. Without this they do not wrap at all, and
+   * the name runs straight out over the how-to-operate panel next door.
+   */
+  overflow-wrap: break-word;
+}
+
+.decal-list li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+}
+
+/* A continuation line under a bullet — the chemical formula, the temperature. */
+.decal-sub {
+  display: block;
+  font-weight: 700;
+  padding-left: 0.35em;
+}
+
+.decal-centred-sub {
+  display: block;
+  text-align: center;
+  font-weight: 700;
+  margin-top: 0.35em;
+}
+
+/*
+ * The blank an operator writes the cylinder's figure on. An underline of set
+ * width rather than a run of underscores, so it stays a straight rule at every
+ * decal size — and so a value can be dropped onto it when one is supplied.
+ */
+/*
+ * Sized so "CAPACITY ____ kg" stays on one line in the narrowest column on the
+ * decal, as it does on the original. A wider rule pushes "kg" onto a line of its
+ * own and costs the column a line it does not have.
+ */
+.decal-blank {
+  display: inline-block;
+  min-width: 2.2em;
+  border-bottom: 0.09em solid var(--ink);
+  text-align: center;
+  font-weight: 700;
+  /* Sits on the writing line rather than the baseline of the label beside it. */
+  margin: 0 0.15em;
+  line-height: 1;
+}
+
+/* The full-weight rule gets a line to itself, so it can run longer. */
+.decal-blank-wide {
+  min-width: 4.5em;
+}
+
+.decal-rating {
+  margin-top: 0.5em;
+  font-weight: 700;
+  /* Small enough to keep "FIRE RATING 2A-2BC" off a second line. */
+  font-size: 0.86em;
+  text-align: center;
+}
+
+/* WARNING, in its own ruled box with a tab at the top. */
+.decal-warning {
+  margin-top: 0.7em;
+  border: 0.11em solid var(--rule);
+  padding: 0.4em 0.3em;
+  text-align: center;
+}
+
+.decal-warning-title {
+  font-weight: 700;
+  font-size: 1.15em;
+  letter-spacing: 0.02em;
+}
+
+.decal-warning-text {
+  margin-top: 0.3em;
+  font-size: 0.8em;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+/*
+ * "RECHARGE AFTER USE" and the country of origin sit at the foot of the column,
+ * pushed there rather than positioned, so the block above can grow by a line
+ * (a second chemical name) without them moving.
+ *
+ * 1.5em is the largest that keeps "AFTER USE" on one line inside this column,
+ * as it is on the original. A size that wraps it costs a third line, and the
+ * column is the tightest on the decal — the overflow lands on the foot.
+ */
+.decal-recharge {
+  margin-top: auto;
+  padding-top: 0.5em;
+  text-align: center;
+  font-size: 1.5em;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.decal-origin {
+  margin-top: 0.5em;
+  padding-bottom: 0.1em;
+  text-align: center;
+  font-size: 0.95em;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+/* ---------- Centre column ---------- */
+
+.decal-operate-title {
+  font-size: 2em;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.005em;
+  line-height: 1;
+}
+
+/*
+ * The four panels are one image, sized by the column's width. Its height comes
+ * from the artwork, and the class row below takes what is left — which works at
+ * every decal size because both are fractions of the same width.
+ */
+.decal-operate {
+  width: 100%;
+  height: auto;
+  margin-top: 0.3em;
+  flex: 0 0 auto;
+}
+
+/*
+ * The fire-class row: letter, caption, pictogram tile, three across.
+ *
+ * The three parts are separate elements rather than one cropped column, because
+ * a struck class is marked twice in the original — a ringed slash over the
+ * letter and a bare slash over the tile — and the caption between them must stay
+ * unmarked and legible.
+ */
+.decal-classes {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  gap: 0.4em;
+  min-height: 0;
+  padding: 0.3em 0 0.1em;
+}
+
+.decal-class {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 0;
+}
+
+.decal-class-letter,
+.decal-class-tile {
+  position: relative;
+  display: flex;
+  min-height: 0;
+}
+
+.decal-class-letter {
+  flex: 0 1 40%;
+}
+
+.decal-class-tile {
+  flex: 0 1 50%;
+}
+
+.decal-class-letter img,
+.decal-class-tile img {
+  height: 100%;
+  width: auto;
+  object-fit: contain;
+}
+
+.decal-class-caption {
+  font-size: 0.72em;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.1;
+  padding: 0.12em 0;
+}
+
+/*
+ * The prohibition mark over a class the extinguisher must not be used on — AFFF
+ * on electrical fires. Drawn rather than cropped from the artwork: the only scan
+ * of it is a washed-out second-generation copy, and a ring and a stroke are
+ * exactly the sort of thing that should be vector on a safety label.
+ */
+.decal-struck::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-position: center;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* Ring and slash, kept circular by fitting a square viewBox to the letter. */
+.decal-class-letter.decal-struck::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='44' fill='none' stroke='%23111' stroke-width='9'/%3E%3Cline x1='17' y1='17' x2='83' y2='83' stroke='%23cc1c22' stroke-width='9' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-size: contain;
+}
+
+/* The tile carries the stroke alone, corner to corner. */
+.decal-class-tile.decal-struck::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cline x1='6' y1='6' x2='94' y2='94' stroke='%23cc1c22' stroke-width='8' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-size: 100% 100%;
+}
+
+.decal-footnote {
+  text-align: center;
+  font-size: 0.56em;
+  font-weight: 700;
+  line-height: 1.15;
+  padding-top: 0.2em;
+}
+
+/* The residential line is set larger and in a condensed, quoted style. */
+.decal-footnote-residential {
+  font-size: 0.86em;
+  letter-spacing: -0.01em;
+}
+
+/* ---------- Maintenance column ---------- */
+
+.decal-caution {
+  margin-top: 0.5em;
+  font-size: 1.2em;
+  font-weight: 700;
+  text-align: center;
+}
+
+/*
+ * Date and serial are ruled off from the list above and from each other, the way
+ * a form is: the operator writes the date and the cylinder's serial in the space
+ * beside each label.
+ */
+.decal-stamps {
+  margin-top: auto;
+}
+
+.decal-stamp {
+  border-top: 0.11em solid var(--rule);
+  padding: 0.35em 0.2em 0.35em 0.4em;
+  font-size: 0.95em;
+  font-weight: 700;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4em;
+}
+
+.decal-stamp-value {
+  font-weight: 400;
+}
+
+/* ---------- Foot: manufacturer and certification ---------- */
+
+.decal-foot {
+  flex: 0 0 16.1%;
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+  padding: 0.35em 0.7em;
+}
+
+.decal-foot-mark {
+  height: 92%;
+  width: auto;
+  /* Bounded both ways: the source lockup is 970px square. */
+  max-width: 17%;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.decal-imprint {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.decal-imprint-line {
+  font-size: 0.95em;
+}
+
+.decal-imprint-strong {
+  font-weight: 700;
+}
+
+.decal-distributor {
+  font-size: 1.6em;
+  font-weight: 700;
+  color: var(--green);
+  line-height: 1.02;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.decal-address {
+  margin-top: 0.15em;
+  font-size: 0.7em;
+  line-height: 1.25;
+}
+
+.decal-badge {
+  flex-shrink: 0;
+  height: 96%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* The mark takes rather over half the badge; the three lines under it the rest. */
+.decal-badge img {
+  flex: 0 1 auto;
+  height: 52%;
+  width: auto;
+  min-height: 0;
+  margin-bottom: 0.2em;
+  object-fit: contain;
+}
+
+/*
+ * The licence number is set rather than cropped, because it is the one part of
+ * the badge that differs between decals (Q 0485 on dry chemical and CO2,
+ * Q 1265 on HFC 236FA and AFFF) — and it is the part a regulator reads.
+ */
+.decal-licence {
+  font-size: 0.66em;
+  font-weight: 700;
+  white-space: nowrap;
+  margin-top: 0.1em;
+}

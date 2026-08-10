@@ -9,6 +9,7 @@ import {
   LuHouse,
   LuLayoutTemplate,
   LuPackage,
+  LuSticker,
   LuUserCog,
   LuUsers,
 } from "react-icons/lu";
@@ -24,6 +25,9 @@ const SECTIONS = [
   // Next to quotations: the two documents the business issues, in the order a
   // job passes through them — quote the work, then certify it finished.
   { href: "/certificates", label: "Certificates", Icon: LuAward },
+  // The third thing the shop prints. Not a document for a client — it goes on
+  // the cylinder — but it belongs with the printables rather than the catalogue.
+  { href: "/decals", label: "Decals", Icon: LuSticker },
   { href: "/customers", label: "Customers", Icon: LuUsers },
   { href: "/quotation-types", label: "Quotation types", Icon: LuLayoutTemplate },
   { href: "/items", label: "Items", Icon: LuPackage },

@@ -102,11 +102,13 @@
 /* ---------- Title band ---------- */
 
 /*
- * 10% of the decal's height, matching the original. `flex: 0 0 <pct>` rather
- * than a height in `em`, so the four bands always add up to the sheet exactly.
+ * 11% of the decal's height. `flex: 0 0 <pct>` rather than a height in `em`, so
+ * the four bands always add up to the sheet exactly — the grid below takes
+ * whatever is left. A point more than the original's 10%, to carry a title set
+ * larger than the original's.
  */
 .decal-band {
-  flex: 0 0 10%;
+  flex: 0 0 11%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -123,10 +125,19 @@
   color: #fff;
 }
 
+/*
+ * Arial Black rather than Arial Bold: 700 is the heaviest weight Arial has, so
+ * asking for more weight in the same family does nothing (or gets a poor
+ * synthetic bold). Arial Black ships with Windows, which is where these are
+ * printed. The widest title, CARBON DIOXIDE, comes to about 118mm of the 138mm
+ * the band has at the reference size, so there is still room for a longer one —
+ * but not much. Check the widest title before raising this again.
+ */
 .decal-title {
-  font-size: 3.3em;
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  font-family: "Arial Black", "Arial Bold", Arial, sans-serif;
+  font-size: 4.2em;
+  font-weight: 900;
+  letter-spacing: 0;
   line-height: 1;
 }
 
@@ -147,31 +158,65 @@
 
 /* ---------- Brand row: crest and wordmark ---------- */
 
+/*
+ * The wordmark is centred on the decal, with the crest held at the left edge
+ * rather than pushing it — so LION sits on the label's centre line whatever the
+ * crest is doing beside it. That is why the crest is taken out of the flow: in a
+ * plain row it would occupy the left third and shove the wordmark right of
+ * centre by half its own width.
+ */
+/*
+ * Tighter than the original's 15.2%, with the padding above and below the marks
+ * cut back to match — the brand row was carrying more white than it needed and
+ * the height reads better on the grid below. The crest and wordmark are set as a
+ * larger share of the smaller box, so they keep their drawn size and it is only
+ * the space around them that closes up.
+ */
 .decal-brand {
-  flex: 0 0 15.2%;
+  flex: 0 0 13%;
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 1.2em;
-  padding: 0.5em 1em;
+  justify-content: center;
+  padding: 0.25em 1em;
   border-bottom: 0.14em solid var(--rule);
 }
 
+/*
+ * Neither mark fills the row. On the original artwork the crest stands about
+ * 22mm and the wordmark about 21mm in a 29mm band, so both sit inside a margin
+ * of white rather than running edge to edge — which is what stops the brand row
+ * from overpowering the title above it.
+ */
 .decal-crest {
-  height: 100%;
+  position: absolute;
+  left: 1em;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 93%;
   width: auto;
   object-fit: contain;
 }
 
 /*
- * The wordmark takes the rest of the row. `min-width: 0` so it may shrink inside
- * the flex row rather than pushing the crest out of the decal.
+ * Sized by its height, so it stays in proportion to the crest. The max-width is
+ * a guard rather than a size: centred, the wordmark grows equally in both
+ * directions, and without a ceiling a longer one would eventually run under the
+ * crest held at the left.
+ */
+/*
+ * Nudged right off the geometric centre. The artwork carries a black drop
+ * shadow that falls to the right, so an image centred by its bounding box reads
+ * as sitting left — this puts the letters themselves on the centre line. A
+ * transform rather than a margin, so it shifts what is drawn without moving the
+ * box and re-opening the question of where the centre is.
  */
 .decal-wordmark {
-  flex: 1 1 auto;
-  min-width: 0;
-  height: 100%;
+  height: 90%;
+  width: auto;
+  max-width: 60%;
   object-fit: contain;
-  object-position: left center;
+  transform: translateX(4%);
 }
 
 /* ---------- Middle: three columns ---------- */
@@ -219,6 +264,16 @@
   font-weight: 700;
   text-align: center;
   letter-spacing: 0.01em;
+}
+
+/*
+ * "SPECIFICATIONS" is fourteen characters into the narrowest column on the
+ * decal — at the shared heading size it is about a millimetre wider than the
+ * column and prints over the rule. "MAINTENANCE" is shorter and its column
+ * wider, so only this one needs taking down.
+ */
+.decal-specs .decal-heading {
+  font-size: 1em;
 }
 
 /* ---------- Specifications ---------- */

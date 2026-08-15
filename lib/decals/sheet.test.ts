@@ -70,9 +70,25 @@ describe("planSheet", () => {
     expect(plan.rows).toBe(1);
     expect(plan.perSheet).toBe(2);
     expect(plan.gap).toBe(DEFAULT_GAP_MM);
-    // 297 - (2 x 141 + 5 of cutting gap) = 10, so 5mm each side.
-    expect(plan.margin.x).toBeCloseTo(5, 1);
+    // 297 - (2 x 141 + 8 of cutting gap) = 7, so 3.5mm each side.
+    expect(plan.margin.x).toBeCloseTo(3.5, 1);
     expect(plan.margin.y).toBeCloseTo(10, 1);
+  });
+
+  /*
+   * The default gap leaves 1mm of slack across the sheet, so the boundary is
+   * pinned: 9mm exactly fills the 291mm the printer can reach, and 10mm drops
+   * the sheet to a single decal. Worth failing loudly if the decal size or the
+   * printer margin is ever changed without re-checking this.
+   */
+  it("sits one millimetre inside the two-up boundary", () => {
+    expect(planSheet(DEFAULT_WIDTH_MM, "landscape", 8).perSheet).toBe(2);
+    expect(planSheet(DEFAULT_WIDTH_MM, "landscape", 9).perSheet).toBe(2);
+    expect(planSheet(DEFAULT_WIDTH_MM, "landscape", 9).margin.x).toBeCloseTo(
+      PRINTER_MARGIN_MM,
+      1,
+    );
+    expect(planSheet(DEFAULT_WIDTH_MM, "landscape", 10).perSheet).toBe(1);
   });
 
   /*

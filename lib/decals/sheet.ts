@@ -42,11 +42,14 @@ export const MAX_WIDTH_MM = 200;
  * black frame off the decal on that side. A few millimetres of slack turns one
  * exact cut into two forgiving ones.
  *
- * 5mm is what the reference layout can afford — two 141mm decals plus a 5mm gap
- * is 287mm, leaving 5mm of margin each side of a 297mm sheet, still clear of the
- * printer's 3mm edge.
+ * 8mm is close to the most the reference layout can afford: two 141mm decals
+ * plus an 8mm gap is 290mm, against the 291mm the printer can reach across a
+ * 297mm sheet. It fits, with 3.5mm of margin each side, and 1mm of slack in
+ * hand — 9mm fills the printable width exactly, and 10mm drops the sheet to a
+ * single decal. `planSheet` reports the count, and the print page says so when
+ * the gap starts costing decals.
  */
-export const DEFAULT_GAP_MM = 5;
+export const DEFAULT_GAP_MM = 8;
 export const MAX_GAP_MM = 20;
 
 /**

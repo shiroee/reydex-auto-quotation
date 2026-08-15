@@ -284,14 +284,20 @@ occasionally wins a column the printer cannot actually put ink on, and that
 failure is only discovered once the sheet is printed with its outer decals
 shaved off.
 
-**Decals are separated by a cutting gap**, 5 mm by default. Butted together they
+**Decals are separated by a cutting gap**, 8 mm by default. Butted together they
 share a cut line, which is tidy on paper and unforgiving in practice: one
 guillotine pass a millimetre off centre shaves the black frame off whichever
 decal it strayed into. The gap turns one exact cut into two forgiving ones. It is
 charged against the printable area like anything else, so a wider gap can cost a
-column — the sheet says so when it does rather than capping the gap quietly. At
-the default size and gap that is two per A4 landscape, with 5 mm to spare each
-side.
+column — the sheet says so when it does rather than capping the gap quietly.
+
+At the default size and gap that is two per A4 landscape with 3.5 mm to spare
+each side — close to the limit. Two 141 mm decals and an 8 mm gap come to 290 mm
+of the 291 mm the printer can reach, so **there is 1 mm of slack in the whole
+sheet**: 9 mm fills the printable width exactly, and 10 mm drops the sheet to one
+decal. A unit test pins that boundary, so changing the decal size or the printer
+margin without re-checking it fails rather than halving the shop's output
+quietly.
 
 > **Set the print dialog to Margins: None and Scale: 100%.** On any other
 > setting the browser shrinks the sheet to fit its own margins, and a decal that

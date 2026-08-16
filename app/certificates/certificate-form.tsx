@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import {
   FIELD,
   type CertificateFormState,
   type CertificateInput,
+  type CertificateKind,
 } from "@/lib/certificates/form";
 import type { CertificateRecord } from "@/lib/certificates/service";
 
@@ -16,15 +17,18 @@ import {
 } from "./actions";
 
 /**
- * Issue / edit form for a certificate of completion.
+ * Issue / edit form for either certificate.
  *
- * One component for both, because the fields are identical — only the action,
- * the hidden id and the button wording differ. Splitting them would mean keeping
- * two copies of the same ten fields in step.
+ * One component for both documents and for both modes. The two kinds share
+ * their six required fields — client, system, location, the two dates, the place
+ * of issue — and differ only in the block underneath, so splitting them would
+ * mean keeping two copies of those six in step. The labels change with the kind
+ * because the same column means something slightly different on each sheet: a
+ * completion date on one, a test date on the other.
  *
- * The wording of the certificate is not editable here by design: it is fixed in
- * `components/certificates/certificate-layout.tsx`, and this form supplies only
- * the blanks it drops into.
+ * The wording of the certificates is not editable here by design: it is fixed in
+ * the layouts under `components/certificates/`, and this form supplies only the
+ * blanks they drop into.
  */
 export function CertificateForm({
   certificate,
@@ -40,6 +44,17 @@ export function CertificateForm({
     CertificateFormState | null,
     FormData
   >(isEdit ? updateCertificateAction : createCertificateAction, null);
+
+  /*
+   * Which document this is. Chosen once, at issue: the reference is drawn from
+   * the chosen kind's own series and printed on a sheet that may already be in a
+   * client's file, so an edit shows the kind rather than offering it. The server
+   * enforces the same thing — see `updateCertificate`.
+   */
+  const [kind, setKind] = useState<CertificateKind>(
+    certificate?.kind ?? "completion",
+  );
+  const isSafety = kind === "safety_reliability";
 
   /**
    * A rejected submit wins over the stored row: React resets an uncontrolled
@@ -73,20 +88,71 @@ export function CertificateForm({
         ) : null}
       </div>
 
+      {/*
+       * The kind is submitted either way: on an edit it is what tells the parser
+       * which half of the form to keep, even though the row's own kind never
+       * changes.
+       */}
+      {isEdit ? (
+        <input type="hidden" name={FIELD.kind} value={kind} />
+      ) : (
+        <section className="reydex-card rounded-2xl p-5 sm:p-6">
+          <h2 className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-gold-500/80">
+            Document
+          </h2>
+          <p className="mb-5 text-sm leading-relaxed text-gold-100/45">
+            Fixed once the certificate is issued — the reference number is drawn
+            from this document&apos;s own series.
+          </p>
+
+          <fieldset className="grid gap-3 sm:grid-cols-2">
+            <legend className="sr-only">Kind of certificate</legend>
+
+            <KindChoice
+              value="completion"
+              checked={!isSafety}
+              onSelect={setKind}
+              title="Certificate of completion"
+              detail="Reydex certifies that it completed the preventive maintenance, inspection and testing. Signed by the company, accepted by the client."
+              reference="RDX-COC-…"
+            />
+            <KindChoice
+              value="safety_reliability"
+              checked={isSafety}
+              onSelect={setKind}
+              title="Safety & reliability"
+              detail="A Registered Mechanical Engineer certifies that the system is functional and safe to operate. Signed by the engineer, with their PRC registration."
+              reference="RDX-CSR-…"
+            />
+          </fieldset>
+        </section>
+      )}
+
       <section className="reydex-card rounded-2xl p-5 sm:p-6">
         <h2 className="mb-5 text-sm font-semibold uppercase tracking-[0.16em] text-gold-500/80">
-          The job
+          {isSafety ? "The inspection" : "The job"}
         </h2>
 
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <Field label="Client" error={state?.errors?.clientName} required>
+            <Field
+              label={isSafety ? "Establishment" : "Client"}
+              error={state?.errors?.clientName}
+              hint={
+                isSafety
+                  ? "Printed under the title and again in the body"
+                  : undefined
+              }
+              required
+            >
               <input
                 name={FIELD.clientName}
                 defaultValue={initial("clientName")}
                 autoFocus={!isEdit}
                 aria-invalid={state?.errors?.clientName ? "true" : undefined}
-                placeholder="SHOPPER SAVERS"
+                placeholder={
+                  isSafety ? "SHOPPERS SAVER GROCERY" : "SHOPPER SAVERS"
+                }
                 className="reydex-field w-full rounded-lg px-3 py-2.5 text-[0.95rem] text-gold-50 placeholder:text-gold-100/25"
               />
             </Field>
@@ -94,16 +160,24 @@ export function CertificateForm({
 
           <div className="sm:col-span-2">
             <Field
-              label="Project"
+              label={isSafety ? "System certified" : "Project"}
               error={state?.errors?.projectTitle}
-              hint="Printed after “PROJECT :” and again in the body"
+              hint={
+                isSafety
+                  ? "Printed in the body, in title case as typed"
+                  : "Printed after “PROJECT :” and again in the body"
+              }
               required
             >
               <input
                 name={FIELD.projectTitle}
                 defaultValue={initial("projectTitle")}
                 aria-invalid={state?.errors?.projectTitle ? "true" : undefined}
-                placeholder="FIRE DETECTION AND ALARM SYSTEM"
+                placeholder={
+                  isSafety
+                    ? "Fire Detection and Alarm System"
+                    : "FIRE DETECTION AND ALARM SYSTEM"
+                }
                 className="reydex-field w-full rounded-lg px-3 py-2.5 text-[0.95rem] text-gold-50 placeholder:text-gold-100/25"
               />
             </Field>
@@ -111,7 +185,11 @@ export function CertificateForm({
 
           <div className="sm:col-span-2">
             <Field
-              label="Location of the works"
+              label={
+                isSafety
+                  ? "Location of the establishment"
+                  : "Location of the works"
+              }
               error={state?.errors?.location}
               required
             >
@@ -119,14 +197,18 @@ export function CertificateForm({
                 name={FIELD.location}
                 defaultValue={initial("location")}
                 aria-invalid={state?.errors?.location ? "true" : undefined}
-                placeholder="Subic, Zambales"
+                placeholder={
+                  isSafety
+                    ? "Brgy. Baraca Camachile Subic, Zambales"
+                    : "Subic, Zambales"
+                }
                 className="reydex-field w-full rounded-lg px-3 py-2.5 text-[0.95rem] text-gold-50 placeholder:text-gold-100/25"
               />
             </Field>
           </div>
 
           <Field
-            label="Completed on"
+            label={isSafety ? "Tested & maintained on" : "Completed on"}
             error={state?.errors?.completionDate}
             required
           >
@@ -170,53 +252,76 @@ export function CertificateForm({
 
       <section className="reydex-card rounded-2xl p-5 sm:p-6">
         <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-gold-500/80">
-          Signatories
+          {isSafety ? "Certifying engineer" : "Signatories"}
         </h2>
         <p className="mb-5 mt-2 text-sm leading-relaxed text-gold-100/45">
-          All four are optional. Leave the parties blank to print the client
-          name, and the signatory blank to print whoever the company profile
-          names.
+          {isSafety ? (
+            <>
+              Every field here is optional, but the registration lines are what
+              the Bureau of Fire Protection reads off the sheet. Leave the name
+              blank to print whoever the company profile names.
+            </>
+          ) : (
+            <>
+              All four are optional. Leave the parties blank to print the client
+              name, and the signatory blank to print whoever the company profile
+              names.
+            </>
+          )}
         </p>
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <Field
-              label="Inspected by"
-              error={state?.errors?.inspectedBy}
-              hint="The party that inspected and accepted the works"
-            >
-              <input
-                name={FIELD.inspectedBy}
-                defaultValue={initial("inspectedBy")}
-                aria-invalid={state?.errors?.inspectedBy ? "true" : undefined}
-                placeholder="Same as the client"
-                className="reydex-field w-full rounded-lg px-3 py-2.5 text-[0.95rem] text-gold-50 placeholder:text-gold-100/25"
-              />
-            </Field>
-          </div>
+          {/*
+           * The two parties belong to the completion certificate alone: nobody
+           * countersigns a safety certification, so offering the fields would
+           * invite data that no document prints.
+           */}
+          {isSafety ? null : (
+            <>
+              <div className="sm:col-span-2">
+                <Field
+                  label="Inspected by"
+                  error={state?.errors?.inspectedBy}
+                  hint="The party that inspected and accepted the works"
+                >
+                  <input
+                    name={FIELD.inspectedBy}
+                    defaultValue={initial("inspectedBy")}
+                    aria-invalid={
+                      state?.errors?.inspectedBy ? "true" : undefined
+                    }
+                    placeholder="Same as the client"
+                    className="reydex-field w-full rounded-lg px-3 py-2.5 text-[0.95rem] text-gold-50 placeholder:text-gold-100/25"
+                  />
+                </Field>
+              </div>
 
-          <div className="sm:col-span-2">
-            <Field
-              label="Approved & accepted by"
-              error={state?.errors?.acceptedBy}
-              hint="Printed under the second signature rule"
-            >
-              <input
-                name={FIELD.acceptedBy}
-                defaultValue={initial("acceptedBy")}
-                aria-invalid={state?.errors?.acceptedBy ? "true" : undefined}
-                placeholder="Same as the client"
-                className="reydex-field w-full rounded-lg px-3 py-2.5 text-[0.95rem] text-gold-50 placeholder:text-gold-100/25"
-              />
-            </Field>
-          </div>
+              <div className="sm:col-span-2">
+                <Field
+                  label="Approved & accepted by"
+                  error={state?.errors?.acceptedBy}
+                  hint="Printed under the second signature rule"
+                >
+                  <input
+                    name={FIELD.acceptedBy}
+                    defaultValue={initial("acceptedBy")}
+                    aria-invalid={
+                      state?.errors?.acceptedBy ? "true" : undefined
+                    }
+                    placeholder="Same as the client"
+                    className="reydex-field w-full rounded-lg px-3 py-2.5 text-[0.95rem] text-gold-50 placeholder:text-gold-100/25"
+                  />
+                </Field>
+              </div>
+            </>
+          )}
 
           <Field label="Certified by" error={state?.errors?.signatoryName}>
             <input
               name={FIELD.signatoryName}
               defaultValue={initial("signatoryName")}
               aria-invalid={state?.errors?.signatoryName ? "true" : undefined}
-              placeholder="REYNALDO MANALO"
+              placeholder={isSafety ? "BRYAN A. LALAP" : "REYNALDO MANALO"}
               className="reydex-field w-full rounded-lg px-3 py-2.5 text-[0.95rem] text-gold-50 placeholder:text-gold-100/25"
             />
           </Field>
@@ -226,10 +331,70 @@ export function CertificateForm({
               name={FIELD.signatoryTitle}
               defaultValue={initial("signatoryTitle")}
               aria-invalid={state?.errors?.signatoryTitle ? "true" : undefined}
-              placeholder="General Manager"
+              placeholder={
+                isSafety
+                  ? "Registered Mechanical Engineer (RME)"
+                  : "General Manager"
+              }
               className="reydex-field w-full rounded-lg px-3 py-2.5 text-[0.95rem] text-gold-50 placeholder:text-gold-100/25"
             />
           </Field>
+
+          {isSafety ? (
+            <>
+              <Field
+                label="PRC registration no."
+                error={state?.errors?.engineerLicenseNo}
+                hint="Printed as “PRC Registration # 90214”"
+              >
+                <input
+                  name={FIELD.engineerLicenseNo}
+                  defaultValue={initial("engineerLicenseNo")}
+                  aria-invalid={
+                    state?.errors?.engineerLicenseNo ? "true" : undefined
+                  }
+                  placeholder="90214"
+                  className="reydex-field w-full rounded-lg px-3 py-2.5 text-[0.95rem] text-gold-50 placeholder:text-gold-100/25"
+                />
+              </Field>
+
+              <Field
+                label="Licence valid until"
+                error={state?.errors?.engineerLicenseExpiry}
+                hint="Optional — omitted from the sheet when blank"
+              >
+                <input
+                  name={FIELD.engineerLicenseExpiry}
+                  type="date"
+                  defaultValue={initial("engineerLicenseExpiry")}
+                  aria-invalid={
+                    state?.errors?.engineerLicenseExpiry ? "true" : undefined
+                  }
+                  className="reydex-field w-full rounded-lg px-3 py-2.5 text-[0.95rem] text-gold-50"
+                />
+              </Field>
+
+              <div className="sm:col-span-2">
+                <Field
+                  label="Findings"
+                  hint="The closing clause of the third paragraph"
+                >
+                  <select
+                    name={FIELD.findings}
+                    defaultValue={initial("findings") || "none"}
+                    className="reydex-field w-full rounded-lg px-3 py-2.5 text-[0.95rem] text-gold-50"
+                  >
+                    <option value="none">
+                      Working normally — nothing to note
+                    </option>
+                    <option value="minor">
+                      Working normally, but with minor findings to consider
+                    </option>
+                  </select>
+                </Field>
+              </div>
+            </>
+          ) : null}
         </div>
       </section>
 
@@ -254,6 +419,57 @@ export function CertificateForm({
         </button>
       </div>
     </form>
+  );
+}
+
+/**
+ * One of the two kinds, as a card-sized radio.
+ *
+ * A real `<input type="radio">` rather than a styled button: it gives arrow-key
+ * navigation within the group, a single tab stop, and a form value, all for
+ * free. It is visually hidden with `sr-only` rather than `display: none`, which
+ * would take it out of the accessibility tree along with the focus ring the
+ * card draws from `peer-focus-visible`.
+ */
+function KindChoice({
+  value,
+  checked,
+  onSelect,
+  title,
+  detail,
+  reference,
+}: {
+  value: CertificateKind;
+  checked: boolean;
+  onSelect: (kind: CertificateKind) => void;
+  title: string;
+  detail: string;
+  reference: string;
+}) {
+  return (
+    <label
+      className={`flex cursor-pointer flex-col gap-1.5 rounded-xl border p-4 transition ${
+        checked
+          ? "border-gold-500/60 bg-gold-500/10"
+          : "border-gold-500/15 hover:border-gold-500/35"
+      }`}
+    >
+      <input
+        type="radio"
+        name={FIELD.kind}
+        value={value}
+        checked={checked}
+        onChange={() => onSelect(value)}
+        className="peer sr-only"
+      />
+      <span className="flex items-center justify-between gap-2 peer-focus-visible:underline">
+        <span className="text-sm font-semibold text-gold-100">{title}</span>
+        <span className="font-mono text-[0.7rem] text-gold-100/40">
+          {reference}
+        </span>
+      </span>
+      <span className="text-xs leading-relaxed text-gold-100/45">{detail}</span>
+    </label>
   );
 }
 

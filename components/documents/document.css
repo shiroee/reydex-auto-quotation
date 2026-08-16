@@ -631,6 +631,91 @@
   letter-spacing: 0.02em;
 }
 
+/* ---------- Certification of safety & reliability ---------- */
+
+/*
+ * The second certificate reuses the frame above — `.q-cert`, `.q-cert-title`,
+ * `.q-cert-body`, `.q-cert-signature` — and changes three things: the title is
+ * underlined, the client and location are a centred block rather than a
+ * particulars table, and the body is set with the wider leading of the original.
+ */
+.q-cert-title-ruled {
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-decoration-thickness: 0.6pt;
+  /* Clear of the descenders on both lines rather than cutting through them. */
+  text-underline-offset: 2mm;
+}
+
+/*
+ * The original letter-spaces the first word by hand. Doing it in CSS keeps the
+ * look without breaking the word up; the negative margin cancels the trailing
+ * space letter-spacing adds after the final letter, so the gap before "OF" is
+ * an ordinary word space.
+ */
+.q-cert-title-tracked {
+  letter-spacing: 0.4em;
+  margin-right: -0.4em;
+}
+
+/* The establishment the certificate is about, under the title. */
+.q-cert-subject {
+  margin-top: 10mm;
+  text-align: center;
+}
+
+.q-cert-subject-name {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 1.2mm;
+}
+
+.q-cert-subject-location {
+  margin-top: 1.5mm;
+  font-style: italic;
+}
+
+/*
+ * Wider leading than the completion certificate, which is what makes four short
+ * paragraphs fill a sheet the way the original does. Ranged left rather than
+ * justified: the lines are loose enough that justification would open rivers.
+ */
+.q-cert-body-airy {
+  margin-top: 10mm;
+  line-height: 1.9;
+}
+
+.q-cert-body-airy p {
+  margin-top: 6mm;
+  text-align: left;
+}
+
+/* Flush left under "CERTIFIED BY:", where the completion block insets its rule. */
+.q-cert-sig-scan {
+  padding-left: 2mm;
+}
+
+/*
+ * Name, professional title, PRC registration and validity date — set tight, as
+ * one block of credentials rather than four separate lines.
+ */
+.q-cert-credentials {
+  line-height: 1.35;
+}
+
+.q-cert-credentials p {
+  font-size: 10.5pt;
+}
+
+.q-cert-credential-name {
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.q-cert-credential-title {
+  font-style: italic;
+}
+
 /* ---------- Toolbar (screen only) ---------- */
 
 .q-toolbar {

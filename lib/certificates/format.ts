@@ -1,5 +1,5 @@
 /**
- * Printed wording for a certificate of completion.
+ * Printed wording shared by both certificates.
  *
  * Pure and free of Next.js / database imports so it can be unit tested and
  * shared by the print layout, the dashboard and the Server Actions — the same
@@ -12,6 +12,10 @@
  * Greenwich — so a server rendering in UTC-5 would print the day before the one
  * stored. A calendar date has no timezone, and this keeps it that way.
  */
+
+// Relative, not `@/`: this module is unit tested, and the vitest config
+// resolves no path alias — see the same import in `./form.ts`.
+import type { CertificateKind } from "./form";
 
 const MONTHS = [
   "January",
@@ -106,4 +110,33 @@ export function issuedOn(iso: string): IssuedOn | null {
     suffix: ordinalSuffix(parts.day),
     monthYear: formatMonthYear(iso),
   };
+}
+
+/**
+ * Which document a row is, for the dashboard.
+ *
+ * Short and parallel rather than the full titles: these are read in a table
+ * cell beside a reference number that already carries half the answer, so
+ * "Completion" next to RDX-COC-2026-0001 says everything "Certificate of
+ * completion" would, in a cell that does not wrap.
+ */
+export function certificateKindLabel(kind: CertificateKind): string {
+  return kind === "safety_reliability" ? "Safety & reliability" : "Completion";
+}
+
+/**
+ * The date each kind hangs its story on, as a column heading: one certifies
+ * that works were *completed*, the other that a system was *tested*.
+ */
+export function completionDateLabel(kind: CertificateKind): string {
+  return kind === "safety_reliability" ? "Tested" : "Completed";
+}
+
+/**
+ * The lead-in of the saved filename — see `lib/documents/filename.ts`, where
+ * the reasoning for putting the kind first is spelled out. Two documents for the
+ * same client land side by side in a folder and have to be told apart there.
+ */
+export function certificateFilePrefix(kind: CertificateKind): string {
+  return kind === "safety_reliability" ? "Reydex CSR" : "Reydex COC";
 }

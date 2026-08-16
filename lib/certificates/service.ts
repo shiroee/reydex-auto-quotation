@@ -5,7 +5,7 @@ import * as schema from "@/db/schema";
 import { certificates, companyProfile } from "@/db/schema";
 import { normalizeSearch, toContainsPattern } from "@/lib/quotations/search";
 
-import type { CertificateInput } from "./form";
+import type { CertificateInput, CertificateKind } from "./form";
 
 /**
  * Reading and writing certificates of completion.
@@ -19,23 +19,50 @@ export type CertificateDb = NodePgDatabase<typeof schema>;
 type Tx = Parameters<Parameters<CertificateDb["transaction"]>[0]>[0];
 
 /**
- * Reference in the form RDX-COC-2026-0001.
+ * One numbering series per kind, so the prefix says which document it is at a
+ * glance and neither series has holes where the other one was issued.
  *
- * `COC` sets it apart from a quotation's RDX-2026-0001 at a glance, which
- * matters because both get quoted in emails and filed in the same folder.
+ * The sequence names are `sql` fragments rather than strings interpolated into
+ * a query: nothing here is caller-controlled today, and keeping it that way is
+ * one less thing to get wrong later.
+ */
+const SERIES: Record<CertificateKind, { prefix: string; nextval: ReturnType<typeof sql> }> = {
+  completion: {
+    prefix: "RDX-COC",
+    nextval: sql`nextval('certificate_no_seq')`,
+  },
+  safety_reliability: {
+    prefix: "RDX-CSR",
+    nextval: sql`nextval('certificate_safety_no_seq')`,
+  },
+};
+
+/**
+ * Reference in the form RDX-COC-2026-0001 or RDX-CSR-2026-0001.
+ *
+ * The letters set a certificate apart from a quotation's RDX-2026-0001 at a
+ * glance, which matters because all three get quoted in emails and filed in the
+ * same folder — and apart from each other, because the two documents are issued
+ * for the same job and would otherwise be told apart only by opening them.
  *
  * Drawn from a Postgres sequence rather than `max(cert_no) + 1` so two people
- * saving at once cannot land on the same number. The sequence is global rather
+ * saving at once cannot land on the same number. The sequences are global rather
  * than per-year, so the counter does not restart each January — a deleted
  * certificate therefore leaves a gap, which is the intended behaviour: a
  * reference that has been printed and handed over is never reused.
  */
-async function nextCertificateNo(tx: Tx, year: number): Promise<string> {
+async function nextCertificateNo(
+  tx: Tx,
+  kind: CertificateKind,
+  year: number,
+): Promise<string> {
+  const series = SERIES[kind];
+
   const result = await tx.execute<{ n: string }>(
-    sql`SELECT nextval('certificate_no_seq')::text AS n`,
+    sql`SELECT ${series.nextval}::text AS n`,
   );
 
-  return `RDX-COC-${year}-${String(result.rows[0].n).padStart(4, "0")}`;
+  return `${series.prefix}-${year}-${String(result.rows[0].n).padStart(4, "0")}`;
 }
 
 export type ListCertificatesOptions = {
@@ -59,6 +86,7 @@ export async function listCertificates(
     .select({
       id: certificates.id,
       certNo: certificates.certNo,
+      kind: certificates.kind,
       clientName: certificates.clientName,
       projectTitle: certificates.projectTitle,
       location: certificates.location,
@@ -141,6 +169,7 @@ export async function createCertificate(
     // Numbered by the year it is issued, which is the date printed on it.
     const certNo = await nextCertificateNo(
       tx,
+      input.kind,
       Number(input.issueDate.slice(0, 4)),
     );
 
@@ -160,6 +189,16 @@ export async function createCertificate(
  *
  * The reference is never rewritten, even when the issue date moves to another
  * year: it is the identifier on a document that has already been handed over.
+ *
+ * `kind` is dropped for the same reason. The reference spells out which document
+ * this is, and it was drawn from that kind's own series — so switching kind here
+ * would leave an RDX-CSR printing as a certificate of completion, and a number
+ * missing from one series while another series repeated one. The form does not
+ * offer the choice on an edit; this is what makes that true rather than assumed.
+ *
+ * The columns are listed out rather than spread, so that what an edit is allowed
+ * to change is readable in one place — and so a column added later is written
+ * here on purpose rather than by default. Add new editable columns to the list.
  */
 export async function updateCertificate(
   db: CertificateDb,
@@ -168,7 +207,22 @@ export async function updateCertificate(
 ): Promise<{ certNo: string } | null> {
   const updated = await db
     .update(certificates)
-    .set({ ...input, updatedAt: sql`now()` })
+    .set({
+      clientName: input.clientName,
+      projectTitle: input.projectTitle,
+      location: input.location,
+      completionDate: input.completionDate,
+      issueDate: input.issueDate,
+      issuePlace: input.issuePlace,
+      inspectedBy: input.inspectedBy,
+      acceptedBy: input.acceptedBy,
+      signatoryName: input.signatoryName,
+      signatoryTitle: input.signatoryTitle,
+      findings: input.findings,
+      engineerLicenseNo: input.engineerLicenseNo,
+      engineerLicenseExpiry: input.engineerLicenseExpiry,
+      updatedAt: sql`now()`,
+    })
     .where(eq(certificates.id, id))
     .returning({ certNo: certificates.certNo });
 

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  certificateFilePrefix,
+  certificateKindLabel,
+  completionDateLabel,
   formatLongDate,
   formatLongDateUpper,
   formatMonthYear,
@@ -92,5 +95,29 @@ describe("issuedOn", () => {
   it("is null for an unusable date, so the sentence can be dropped", () => {
     expect(issuedOn("")).toBeNull();
     expect(issuedOn("2026-02-3")).toBeNull();
+  });
+});
+
+describe("labels for the two kinds", () => {
+  it("names each document short enough for a table cell", () => {
+    expect(certificateKindLabel("completion")).toBe("Completion");
+    expect(certificateKindLabel("safety_reliability")).toBe(
+      "Safety & reliability",
+    );
+  });
+
+  /* One column, two meanings: works completed, or a system tested. */
+  it("reads the shared date column the way each document does", () => {
+    expect(completionDateLabel("completion")).toBe("Completed");
+    expect(completionDateLabel("safety_reliability")).toBe("Tested");
+  });
+
+  /*
+   * Both documents get issued for the same job, so they land in the same folder
+   * under the same client name — the prefix is what tells them apart there.
+   */
+  it("gives each kind its own filename prefix", () => {
+    expect(certificateFilePrefix("completion")).toBe("Reydex COC");
+    expect(certificateFilePrefix("safety_reliability")).toBe("Reydex CSR");
   });
 });

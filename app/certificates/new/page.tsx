@@ -28,10 +28,11 @@ export default async function NewCertificatePage() {
               New certificate
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-gold-100/45">
-              The certificate&apos;s wording is fixed — it certifies preventive
-              maintenance, inspection and testing, in compliance with the Bureau
-              of Fire Protection. These fields fill its blanks. The reference
-              number is allocated when you save.
+              Both documents have fixed wording, issued in compliance with the
+              requirements of the Bureau of Fire Protection — these fields fill
+              their blanks. Pick which one you are issuing first: it decides the
+              rest of the form, and it cannot be changed afterwards. The
+              reference number is allocated when you save.
             </p>
           </div>
 

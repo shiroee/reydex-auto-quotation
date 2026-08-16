@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { CertificateLayout } from "@/components/certificates/certificate-layout";
+import { CertificateSheet } from "@/components/certificates/certificate-sheet";
 import { Letterhead } from "@/components/quotations/letterhead";
 import { db } from "@/db";
 import { requireSession } from "@/lib/auth/session";
-import { brandLogo, signatureImage } from "@/lib/brand";
+import { brandLogo } from "@/lib/brand";
+import { certificateFilePrefix } from "@/lib/certificates/format";
 import { isCertificateId } from "@/lib/certificates/form";
 import { getCertificateForPrint } from "@/lib/certificates/service";
 import { documentFileName } from "@/lib/documents/filename";
@@ -36,11 +37,11 @@ export async function generateMetadata({
     title: {
       absolute: data
         ? documentFileName(
-            "Reydex COC",
+            certificateFilePrefix(data.certificate.kind),
             data.certificate.certNo,
             data.certificate.clientName,
           )
-        : "Reydex COC",
+        : "Reydex certificate",
     },
   };
 }
@@ -87,10 +88,9 @@ export default async function CertificatePrintPage({
           <tbody>
             <tr>
               <td className="q-frame-body">
-                <CertificateLayout
+                <CertificateSheet
                   certificate={data.certificate}
                   profile={data.profile}
-                  signature={signatureImage}
                 />
               </td>
             </tr>

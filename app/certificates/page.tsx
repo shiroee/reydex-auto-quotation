@@ -14,7 +14,11 @@ import {
 import { db } from "@/db";
 import { latestActivityFor } from "@/lib/activity/service";
 import { requireSession } from "@/lib/auth/session";
-import { formatLongDate } from "@/lib/certificates/format";
+import {
+  certificateKindLabel,
+  completionDateLabel,
+  formatLongDate,
+} from "@/lib/certificates/format";
 import {
   listCertificates,
   type CertificateListRow,
@@ -135,9 +139,7 @@ export default async function CertificatesPage(
                 </>
               ) : (
                 <>
-                  <p className="text-gold-100/70">
-                    No certificates of completion yet.
-                  </p>
+                  <p className="text-gold-100/70">No certificates yet.</p>
                   <p className="mt-2 text-sm text-gold-100/40">
                     Issue one with{" "}
                     <Link
@@ -146,7 +148,9 @@ export default async function CertificatesPage(
                     >
                       New certificate
                     </Link>{" "}
-                    once a job has been finished and signed off.
+                    — a certificate of completion once a job has been finished
+                    and signed off, or a safety &amp; reliability certification
+                    once an engineer has inspected the system.
                   </p>
                 </>
               )}
@@ -162,9 +166,10 @@ export default async function CertificatesPage(
                     title={row.clientName}
                     subtitle={row.projectTitle}
                     facts={[
+                      { label: "Document", value: certificateKindLabel(row.kind) },
                       { label: "Location", value: row.location },
                       {
-                        label: "Completed",
+                        label: completionDateLabel(row.kind),
                         value: formatLongDate(row.completionDate),
                       },
                       {
@@ -198,17 +203,22 @@ export default async function CertificatesPage(
                   <thead className="border-b border-gold-500/15 text-xs uppercase tracking-wider text-gold-100/45">
                     <tr>
                       {/*
-                       * The issue date sits under the reference rather than in a
-                       * column of its own — the pairing the quotations table
-                       * makes, for the same reason: they are read together.
+                       * The issue date and the kind sit under the reference
+                       * rather than in columns of their own — the pairing the
+                       * quotations table makes, for the same reason: they are
+                       * read together, and the prefix already half-says which
+                       * document it is.
                        */}
                       <th className="px-4 py-3 font-medium">
-                        Ref. No. / issued
+                        Ref. No. / document
                       </th>
                       <th className="px-4 py-3 font-medium">Client</th>
                       <th className="px-4 py-3 font-medium">Project</th>
                       <th className="px-4 py-3 font-medium">Location</th>
-                      <th className="px-4 py-3 font-medium">Completed</th>
+                      {/* One column, two meanings — see `completionDateLabel`. */}
+                      <th className="px-4 py-3 font-medium">
+                        Completed / tested
+                      </th>
                       <th className="px-4 py-3 font-medium">Last change</th>
                       <th className="px-4 py-3" />
                     </tr>
@@ -221,7 +231,10 @@ export default async function CertificatesPage(
                       >
                         <td className="px-4 py-3 whitespace-nowrap font-mono text-xs text-gold-200">
                           {row.certNo}
-                          <span className="mt-0.5 block text-gold-100/35">
+                          <span className="mt-0.5 block font-sans text-gold-100/50">
+                            {certificateKindLabel(row.kind)}
+                          </span>
+                          <span className="block text-gold-100/35">
                             {formatLongDate(row.issueDate)}
                           </span>
                         </td>

@@ -40,6 +40,22 @@ const SIGNATURE_CANDIDATES = [
   "signature.png",
 ] as const;
 
+/**
+ * The signature of the engineer who certifies a fire protection system as safe
+ * and reliable — a different hand from the one above, because that document is
+ * signed in a professional capacity rather than a company one.
+ *
+ * Named for the role, not the person: when the practice's Registered Mechanical
+ * Engineer changes, this file is replaced. The catch worth knowing is that there
+ * is one slot rather than one per engineer, so a certificate naming somebody
+ * else in `signatory_name` would still print the scan sitting here. That is the
+ * same bargain the company signature above already makes.
+ */
+const ENGINEER_SIGNATURE_CANDIDATES = [
+  "images/signature-engineer.png",
+  "images/signature-engineer.svg",
+] as const;
+
 /** Reads intrinsic dimensions straight from the PNG IHDR chunk. */
 function readPngSize(path: string): { width: number; height: number } | null {
   const header = Buffer.alloc(24);
@@ -120,3 +136,6 @@ function resolveBrandImage(candidates: readonly string[]): BrandImage | null {
 export const brandLogo: BrandImage | null = resolveBrandImage(LOGO_CANDIDATES);
 export const signatureImage: BrandImage | null =
   resolveBrandImage(SIGNATURE_CANDIDATES);
+export const engineerSignatureImage: BrandImage | null = resolveBrandImage(
+  ENGINEER_SIGNATURE_CANDIDATES,
+);

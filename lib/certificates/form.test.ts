@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { FIELD, isCertificateId, parseCertificateForm } from "./form";
+import {
+  FIELD,
+  isCertificateId,
+  parseCertificateForm,
+  toCertificateKind,
+} from "./form";
 
 /** Builds a submission; the six required fields are filled unless overridden. */
 function build(fields: Record<string, string> = {}): FormData {
@@ -45,6 +50,7 @@ describe("parseCertificateForm", () => {
     if (!parsed.ok) return;
 
     expect(parsed.input).toEqual({
+      kind: "completion",
       clientName: "SHOPPER SAVERS",
       projectTitle: "FIRE DETECTION AND ALARM SYSTEM",
       location: "Subic, Zambales",
@@ -55,6 +61,9 @@ describe("parseCertificateForm", () => {
       acceptedBy: null,
       signatoryName: null,
       signatoryTitle: null,
+      findings: "none",
+      engineerLicenseNo: null,
+      engineerLicenseExpiry: null,
     });
   });
 
@@ -163,5 +172,141 @@ describe("parseCertificateForm", () => {
     // `checkRequired` returns undefined for "fine"; those keys must be stripped
     // or `Object.keys(errors).length` would count them and reject every form.
     expect(parsed.values.clientName).toBe("SHOPPER SAVERS");
+  });
+});
+
+describe("toCertificateKind", () => {
+  it("passes both kinds through", () => {
+    expect(toCertificateKind("completion")).toBe("completion");
+    expect(toCertificateKind("safety_reliability")).toBe("safety_reliability");
+  });
+
+  /*
+   * The field is a radio group with a default, so an unrecognised value means a
+   * hand-made submission — and the safe reading of one is the document that
+   * carries no professional licence.
+   */
+  it("falls back to the completion certificate for anything else", () => {
+    expect(toCertificateKind("safety")).toBe("completion");
+    expect(toCertificateKind(null)).toBe("completion");
+    expect(toCertificateKind(undefined)).toBe("completion");
+  });
+});
+
+describe("parseCertificateForm — safety & reliability", () => {
+  /** The sample certification, as its form would arrive. */
+  function safety(fields: Record<string, string> = {}): FormData {
+    return build({
+      [FIELD.kind]: "safety_reliability",
+      [FIELD.clientName]: "SHOPPERS SAVER GROCERY",
+      [FIELD.projectTitle]: "Fire Detection and Alarm System",
+      [FIELD.location]: "Brgy. Baraca Camachile Subic, Zambales",
+      [FIELD.completionDate]: "2026-08-07",
+      [FIELD.issueDate]: "2026-08-12",
+      [FIELD.issuePlace]: "Brgy. Baraca Camachile Subic, Zambales",
+      ...fields,
+    });
+  }
+
+  it("keeps the engineer's registration and the findings clause", () => {
+    const parsed = parseCertificateForm(
+      safety({
+        [FIELD.signatoryName]: "BRYAN A. LALAP",
+        [FIELD.signatoryTitle]: "Registered Mechanical Engineer (RME)",
+        [FIELD.engineerLicenseNo]: "90214",
+        [FIELD.engineerLicenseExpiry]: "2027-09-14",
+        [FIELD.findings]: "minor",
+      }),
+    );
+
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    expect(parsed.input.kind).toBe("safety_reliability");
+    expect(parsed.input.signatoryName).toBe("BRYAN A. LALAP");
+    expect(parsed.input.engineerLicenseNo).toBe("90214");
+    expect(parsed.input.engineerLicenseExpiry).toBe("2027-09-14");
+    expect(parsed.input.findings).toBe("minor");
+  });
+
+  it("defaults the findings clause to none", () => {
+    const parsed = parseCertificateForm(safety());
+
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.input.findings).toBe("none");
+  });
+
+  it("takes a blank licence expiry as null rather than an error", () => {
+    const parsed = parseCertificateForm(
+      safety({ [FIELD.engineerLicenseExpiry]: "" }),
+    );
+
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.input.engineerLicenseExpiry).toBeNull();
+  });
+
+  it("still rejects a typed licence expiry that is not a real day", () => {
+    const parsed = parseCertificateForm(
+      safety({ [FIELD.engineerLicenseExpiry]: "2027-02-30" }),
+    );
+
+    expect(parsed.ok).toBe(false);
+    if (parsed.ok) return;
+    expect(parsed.errors.engineerLicenseExpiry).toBeDefined();
+  });
+
+  /*
+   * Nobody countersigns a safety certification, so the two parties are dropped
+   * rather than stored — a row must not carry a value no document will print.
+   */
+  it("drops the inspecting and accepting parties", () => {
+    const parsed = parseCertificateForm(
+      safety({
+        [FIELD.inspectedBy]: "Puregold Olongapo",
+        [FIELD.acceptedBy]: "SHOPPERS SAVER GROCERY",
+      }),
+    );
+
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.input.inspectedBy).toBeNull();
+    expect(parsed.input.acceptedBy).toBeNull();
+  });
+
+  /** The mirror image: a completion certificate carries no licence. */
+  it("drops the engineer's registration from a completion certificate", () => {
+    const parsed = parseCertificateForm(
+      build({
+        [FIELD.engineerLicenseNo]: "90214",
+        [FIELD.engineerLicenseExpiry]: "2027-09-14",
+        [FIELD.findings]: "minor",
+      }),
+    );
+
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.input.engineerLicenseNo).toBeNull();
+    expect(parsed.input.engineerLicenseExpiry).toBeNull();
+    expect(parsed.input.findings).toBe("none");
+  });
+
+  it("rejects an over-long PRC registration number", () => {
+    const parsed = parseCertificateForm(
+      safety({ [FIELD.engineerLicenseNo]: "9".repeat(41) }),
+    );
+
+    expect(parsed.ok).toBe(false);
+    if (parsed.ok) return;
+    expect(parsed.errors.engineerLicenseNo).toBeDefined();
+  });
+
+  it("echoes the kind so a rejected form does not revert to the other one", () => {
+    const parsed = parseCertificateForm(safety({ [FIELD.clientName]: "" }));
+
+    expect(parsed.ok).toBe(false);
+    if (parsed.ok) return;
+    expect(parsed.values.kind).toBe("safety_reliability");
   });
 });

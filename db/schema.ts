@@ -360,11 +360,48 @@ export const quotationExclusions = pgTable(
 /* Certificates of completion                                                 */
 /* -------------------------------------------------------------------------- */
 
-/** Feeds the certificate reference; see `nextCertificateNo`. */
+/** Feeds the RDX-COC reference; see `nextCertificateNo`. */
 export const certificateNoSeq = pgSequence("certificate_no_seq", {
   startWith: 1,
   increment: 1,
 });
+
+/** Feeds the RDX-CSR reference — a separate series, see `nextCertificateNo`. */
+export const certificateSafetyNoSeq = pgSequence("certificate_safety_no_seq", {
+  startWith: 1,
+  increment: 1,
+});
+
+/**
+ * Which of the two documents a row prints as.
+ *
+ * They share this table because they share their particulars — client, system,
+ * location, the two dates, the place of issue — and because the dashboard reads
+ * as one list of "certificates we have issued". What differs is the wording and
+ * the signature block, and that lives in the layouts rather than here.
+ *
+ * `completion` is the default so the column could be added to a table that
+ * already had rows in it without guessing at what they were.
+ */
+export const certificateKind = pgEnum("certificate_kind", [
+  "completion",
+  "safety_reliability",
+]);
+
+/**
+ * The closing clause of a safety & reliability certificate: the system is
+ * "working normally and within its standard operating parameters", either full
+ * stop or "but with minor findings to consider".
+ *
+ * Deliberately two values and not three. A *major* finding contradicts the
+ * sentence it would be appended to — a system with one is not working normally,
+ * and certifying it as such is what this document must not do. A failed
+ * inspection is the absence of a certificate, not a third variant of one.
+ */
+export const certificateFindings = pgEnum("certificate_findings", [
+  "none",
+  "minor",
+]);
 
 /**
  * The one-page certificate issued once a job is finished and signed off — the
@@ -378,24 +415,35 @@ export const certificateNoSeq = pgSequence("certificate_no_seq", {
  * same client will be spelled two ways across a year of certificates, and
  * nothing ties a certificate back to the quotation it completes.
  *
- * The wording is not stored. Every certificate prints the same four paragraphs
- * from `components/certificates/certificate-layout.tsx`, with these columns
- * dropped into the blanks, so a change of wording is one edit to the layout
- * rather than a backfill across every row.
+ * The wording is not stored. Each `kind` prints a fixed set of paragraphs from
+ * its layout under `components/certificates/`, with these columns dropped into
+ * the blanks, so a change of wording is one edit to the layout rather than a
+ * backfill across every row.
+ *
+ * Several columns are read by one kind and ignored by the other —
+ * `inspected_by` / `accepted_by` by the completion certificate, the three
+ * `engineer_*` / `findings` columns by the safety one. The form nulls out the
+ * ones the chosen kind does not print, so a row never carries a value that no
+ * document will ever show.
  */
 export const certificates = pgTable(
   "certificates",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     certNo: text("cert_no").notNull(),
+    kind: certificateKind("kind").notNull().default("completion"),
 
-    /** Free text, as printed after "CLIENT :". */
+    /** Free text, as printed after "CLIENT :" — or centred under the title. */
     clientName: text("client_name").notNull(),
-    /** As printed after "PROJECT :", e.g. "FIRE DETECTION AND ALARM SYSTEM". */
+    /**
+     * The system the document is about, as printed after "PROJECT :" and again
+     * in the body: "FIRE DETECTION AND ALARM SYSTEM".
+     */
     projectTitle: text("project_title").notNull(),
     /** Where the work was done: "Subic, Zambales". */
     location: text("location").notNull(),
 
+    /** Completion of the works, or — on a safety certificate — the test date. */
     completionDate: date("completion_date").notNull(),
     issueDate: date("issue_date").notNull().default(sql`CURRENT_DATE`),
     /** Where the certificate was issued, which need not be where the work was. */
@@ -413,6 +461,20 @@ export const certificates = pgTable(
     /** Both fall back to the company profile's signatory when blank. */
     signatoryName: text("signatory_name"),
     signatoryTitle: text("signatory_title"),
+
+    /* -- Safety & reliability only. See the note above the table. -- */
+
+    findings: certificateFindings("findings").notNull().default("none"),
+    /**
+     * The signatory's PRC licence, printed under their name: the safety
+     * certificate is signed in a professional capacity rather than a company
+     * one, and the Bureau of Fire Protection reads the number off the sheet.
+     */
+    engineerLicenseNo: text("engineer_license_no"),
+    /** The "Validity Date" line. Not checked against the issue date: a lapsed
+     * licence is a matter for the PRC, and refusing to reprint an old
+     * certificate because of one would be the wrong answer. */
+    engineerLicenseExpiry: date("engineer_license_expiry"),
 
     /** neon_auth.user.id — intentionally no FK, see the note at the top. */
     preparedByUserId: text("prepared_by_user_id"),

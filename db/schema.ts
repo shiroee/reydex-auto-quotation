@@ -18,6 +18,19 @@ import {
 } from "drizzle-orm/pg-core";
 
 /*
+ * Type-only, and pointing at `lib/` rather than the other way round as
+ * `ScopeSection` does: the checklist definitions these shapes describe have to
+ * live in a database-free module to stay unit testable, so the shapes live
+ * beside them. Erased at compile time, so the schema still pulls in no runtime
+ * code from the app.
+ */
+import type {
+  ServiceReportChecklist,
+  ServiceReportEquipment,
+  ServiceReportLine,
+} from "@/lib/service-reports/report";
+
+/*
  * Schema derived from the sample quotations (Puregold Castillejos, True North,
  * Umicore Subic).
  *
@@ -494,6 +507,217 @@ export const certificates = pgTable(
 );
 
 /* -------------------------------------------------------------------------- */
+/* FDAS service reports                                                       */
+/* -------------------------------------------------------------------------- */
+
+/** Feeds the RDX-SR reference; see `nextServiceReportNo`. */
+export const serviceReportNoSeq = pgSequence("service_report_no_seq", {
+  startWith: 1,
+  increment: 1,
+});
+
+/** Mirrors `PANEL_TYPES` — the tick under the equipment table. */
+export const panelType = pgEnum("panel_type", ["conventional", "addressable"]);
+
+/** Mirrors `SERVICE_REPORT_KINDS`; see the note on that constant for why two. */
+export const serviceReportKind = pgEnum("service_report_kind", [
+  "checklist",
+  "photo_report",
+]);
+
+
+/**
+ * The maintenance report left with a client after a preventive-maintenance
+ * visit to a Fire Detection and Alarm System: what was serviced, how the panel
+ * scored against a fixed thirteen-item checklist, what was found, and what
+ * should be done about it.
+ *
+ * Unjoined for the same reason `certificates` is — reports get raised for sites
+ * that were never quoted here, and requiring a customer record first would mean
+ * inventing one to print a report. The same cost applies: the same client will
+ * be spelled two ways across a year of visits.
+ *
+ * Four of the columns are `jsonb` rather than child tables. They are the body of
+ * a document: always read whole, always rewritten whole, never queried into and
+ * never joined against. `quotation_items` is a table because a quotation's lines
+ * carry money and a total that has to be recomputed from them; nothing here does
+ * arithmetic, so a child table would buy four joins and a position column apiece
+ * and pay for none of it. The shapes live in `lib/service-reports/report.ts`,
+ * which also holds the normalisers that read them back defensively.
+ */
+export const serviceReports = pgTable(
+  "service_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    reportNo: text("report_no").notNull(),
+    kind: serviceReportKind("kind").notNull().default("checklist"),
+
+    /* ---- The particulars block, which both kinds share ---- */
+
+    /** Free text, as printed after "Customer:" — "CLIENT:" on the photo report. */
+    customerName: text("customer_name").notNull(),
+    address: text("address").notNull(),
+    /**
+     * "Preventive Maintenance of Fire Detection and Alarm System (FDAS)".
+     * Printed after "Project:" on the checklist and "SUBJECT:" on the photo
+     * report — the same sentence under two labels, so one column.
+     */
+    projectTitle: text("project_title").notNull(),
+    serviceDate: date("service_date").notNull(),
+
+    /* ---- Checklist report only ---- */
+
+    /**
+     * "Conventional Fire Detection and Alarm System" — the sentence form of what
+     * `panel_type` records as a tick. The original sheet states it both ways and
+     * this keeps both, because the sentence may say more than the tick can
+     * ("…with addressable annunciator") and the tick is what the table needs.
+     *
+     * Nullable because the photo report has no System line; the form nulls it,
+     * along with the four columns below, for that kind.
+     */
+    systemDescription: text("system_description"),
+    panelType: panelType("panel_type").notNull().default("conventional"),
+
+    equipment: jsonb("equipment")
+      .$type<ServiceReportEquipment[]>()
+      .notNull()
+      .default([]),
+    /** The free "Others" row under the equipment table; blank on most sheets. */
+    otherEquipment: text("other_equipment"),
+    /**
+     * Marks keyed by checklist item. Partial by design — an unmarked item prints
+     * blank rather than as a pass. See `ServiceReportChecklist`.
+     */
+    checklist: jsonb("checklist")
+      .$type<ServiceReportChecklist>()
+      .notNull()
+      .default({}),
+    lines: jsonb("lines").$type<ServiceReportLine[]>().notNull().default([]),
+
+    /* ---- Photo report only ---- */
+
+    /**
+     * The two prose sections above the recommendations: what was found, and what
+     * was done about it. The checklist report says the same things through its
+     * "Action Taken / Findings" table, so these stay empty for that kind.
+     */
+    findings: jsonb("findings").$type<string[]>().notNull().default([]),
+    activities: jsonb("activities").$type<string[]>().notNull().default([]),
+
+    /* ---- Shared ---- */
+
+    /** The one body section both documents print, under the same heading. */
+    recommendations: jsonb("recommendations")
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+
+    /* ---- Signatures ---- */
+
+    /**
+     * Who carried out the service — printed over the "REYDEX's Representative/s"
+     * rule. Falls back to the company profile's signatory when blank, as the
+     * certificates do.
+     */
+    servicedByName: text("serviced_by_name"),
+    servicedByTitle: text("serviced_by_title"),
+    /**
+     * The owner's representative, if known before printing. Usually null: the
+     * second block is signed by hand on site, and the sheet prints an empty rule
+     * for it either way.
+     */
+    notedByName: text("noted_by_name"),
+
+    /** neon_auth.user.id — intentionally no FK, see the note at the top. */
+    preparedByUserId: text("prepared_by_user_id"),
+
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("service_reports_report_no_key").on(t.reportNo),
+    index("service_reports_customer_idx").on(t.customerName),
+    index("service_reports_service_date_idx").on(t.serviceDate),
+  ],
+);
+
+/**
+ * One group of photographs under a shared caption — "CLEANING AND INSPECTION OF
+ * DEVICES" — as the photo report lays them out.
+ *
+ * A table rather than the `jsonb` the rest of the report body uses, because
+ * unlike the checklist's rows these own something that cannot live in a document
+ * column: the photographs themselves. Giving the caption a row of its own is
+ * what stops twelve photographs each carrying their own copy of it and
+ * disagreeing.
+ *
+ * The same caption recurs as several plates in the source document — three
+ * separate "CLEANING AND INSPECTION" plates across three pages — so plates are
+ * ordered and identified by `position`, never deduplicated by caption.
+ */
+export const serviceReportPlates = pgTable(
+  "service_report_plates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    reportId: uuid("report_id")
+      .notNull()
+      .references(() => serviceReports.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    caption: text("caption").notNull(),
+  },
+  (t) => [
+    unique("service_report_plates_position_key").on(t.reportId, t.position),
+    index("service_report_plates_report_idx").on(t.reportId),
+  ],
+);
+
+/**
+ * A site photograph, stored as a link to a file under `public/`.
+ *
+ * The database keeps the path and the web server keeps the bytes. That is why
+ * this table has no `bytea`: a photo report carries twenty-odd images, and rows
+ * of image data would be pulled through the connection pool on every read and
+ * would have to be streamed back out through an application route to be seen.
+ * As a path the browser fetches each file directly, statically and cached.
+ *
+ * Two consequences worth knowing rather than discovering:
+ *
+ * 1. Deleting a report removes these rows through the cascade, but *not* the
+ *    files they point at. Nothing else can — the row is the only thing that
+ *    knows the path — so an orphaned file is the accepted cost of the design.
+ * 2. Files under `public/` are served without authentication. These are
+ *    photographs of a client's premises, and anyone holding the URL can fetch
+ *    one. See the note on the upload route.
+ *
+ * `src` is a site-relative path under `/assets/`, never a full URL: see
+ * `isSafePhotoSrc`, which is what keeps a `javascript:` or an off-site address
+ * out of the column and therefore out of an `<img src>`.
+ */
+export const serviceReportPhotos = pgTable(
+  "service_report_photos",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    plateId: uuid("plate_id")
+      .notNull()
+      .references(() => serviceReportPlates.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    src: text("src").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique("service_report_photos_position_key").on(t.plateId, t.position),
+    index("service_report_photos_plate_idx").on(t.plateId),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
 /* Reusable boilerplate                                                       */
 /* -------------------------------------------------------------------------- */
 
@@ -555,6 +779,7 @@ export const activityEntity = pgEnum("activity_entity", [
   "quotation_type",
   "user",
   "certificate",
+  "service_report",
 ]);
 
 /**
@@ -627,6 +852,32 @@ export const customersRelations = relations(customers, ({ many }) => ({
   quotations: many(quotations),
 }));
 
+export const serviceReportsRelations = relations(
+  serviceReports,
+  ({ many }) => ({ plates: many(serviceReportPlates) }),
+);
+
+export const serviceReportPlatesRelations = relations(
+  serviceReportPlates,
+  ({ one, many }) => ({
+    report: one(serviceReports, {
+      fields: [serviceReportPlates.reportId],
+      references: [serviceReports.id],
+    }),
+    photos: many(serviceReportPhotos),
+  }),
+);
+
+export const serviceReportPhotosRelations = relations(
+  serviceReportPhotos,
+  ({ one }) => ({
+    plate: one(serviceReportPlates, {
+      fields: [serviceReportPhotos.plateId],
+      references: [serviceReportPlates.id],
+    }),
+  }),
+);
+
 export const quotationsRelations = relations(quotations, ({ one, many }) => ({
   customer: one(customers, {
     fields: [quotations.customerId],
@@ -671,5 +922,9 @@ export type QuotationItem = typeof quotationItems.$inferSelect;
 export type CompanyProfile = typeof companyProfile.$inferSelect;
 export type Certificate = typeof certificates.$inferSelect;
 export type NewCertificate = typeof certificates.$inferInsert;
+export type ServiceReport = typeof serviceReports.$inferSelect;
+export type NewServiceReport = typeof serviceReports.$inferInsert;
+export type ServiceReportPlate = typeof serviceReportPlates.$inferSelect;
+export type ServiceReportPhoto = typeof serviceReportPhotos.$inferSelect;
 export type ActivityEntry = typeof activityLog.$inferSelect;
 export type NewActivityEntry = typeof activityLog.$inferInsert;

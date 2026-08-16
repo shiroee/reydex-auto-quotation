@@ -18,7 +18,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:seed-samples": "tsx --env-file=.env.local scripts/db-seed-samples.mts",
-    "db:seed-brochure": "tsx --env-file=.env.local scripts/db-seed-brochure.mts"
+    "db:seed-brochure": "tsx --env-file=.env.local scripts/db-seed-brochure.mts",
+    "db:seed-service-report": "tsx --env-file=.env.local scripts/db-seed-service-report.mts",
+    "db:seed-pm-report": "tsx --env-file=.env.local scripts/db-seed-pm-report.mts",
+    "extract-pdf-photos": "tsx scripts/extract-pdf-photos.mts"
   },
   "dependencies": {
     "@neondatabase/auth": "^0.4.2-beta",

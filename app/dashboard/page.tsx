@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   LuAward,
+  LuClipboardCheck,
   LuFileText,
   LuHistory,
   LuLayoutTemplate,
@@ -33,6 +34,12 @@ const DESTINATIONS = [
     label: "Quotations",
     hint: "Everything raised so far",
     Icon: LuFileText,
+  },
+  {
+    href: "/service-reports",
+    label: "Service reports",
+    hint: "FDAS maintenance reports for each visit",
+    Icon: LuClipboardCheck,
   },
   {
     href: "/certificates",

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LuAward,
+  LuClipboardCheck,
   LuFileText,
   LuHistory,
   LuHouse,
@@ -22,8 +23,10 @@ import {
 const SECTIONS = [
   { href: "/dashboard", label: "Home", Icon: LuHouse },
   { href: "/quotations", label: "Quotations", Icon: LuFileText },
-  // Next to quotations: the two documents the business issues, in the order a
-  // job passes through them — quote the work, then certify it finished.
+  // Next to quotations: the documents the business issues, in the order a job
+  // passes through them — quote the work, report on the visit, then certify it
+  // finished.
+  { href: "/service-reports", label: "Service reports", Icon: LuClipboardCheck },
   { href: "/certificates", label: "Certificates", Icon: LuAward },
   // The third thing the shop prints. Not a document for a client — it goes on
   // the cylinder — but it belongs with the printables rather than the catalogue.

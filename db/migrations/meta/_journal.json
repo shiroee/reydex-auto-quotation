@@ -36,6 +36,34 @@
       "when": 1786885034456,
       "tag": "0004_sad_kate_bishop",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786889015132,
+      "tag": "0005_little_juggernaut",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786891554496,
+      "tag": "0006_faithful_blob",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786893222366,
+      "tag": "0007_curly_the_fallen",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786893236921,
+      "tag": "0008_square_kate_bishop",
+      "breakpoints": true
     }
   ]
 }

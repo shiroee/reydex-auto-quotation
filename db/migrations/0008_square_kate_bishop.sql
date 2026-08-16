@@ -1,0 +1,1 @@
+ALTER TABLE "service_report_photos" ADD COLUMN "src" text NOT NULL;

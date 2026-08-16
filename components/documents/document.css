@@ -716,6 +716,423 @@
   font-style: italic;
 }
 
+/* ---------- FDAS service report ---------- */
+
+/*
+ * The third document, and the only one that is a *form* rather than a letter: a
+ * particulars block, four bordered tables and two signature blocks.
+ *
+ * Set considerably tighter than the letters above — smaller type, less leading,
+ * and about half their cell padding — because the whole of it has to reach the
+ * signature blocks on one sheet, as the original Excel workbook does. There is
+ * roughly 236mm of body between the repeated letterhead and the reserved foot,
+ * and thirteen checklist rows plus four tables do not fit it at letter sizing.
+ * Every measurement in this block is part of that budget, so loosening one means
+ * finding the millimetres somewhere else.
+ */
+.q-sr {
+  /*
+   * The one knob. Every other size in this block is set in `em`, so raising this
+   * scales the whole sheet — at the cost of pushing a long report onto a second
+   * page sooner. 7.5pt is what fits the sample report (one panel, seven findings
+   * rows, three recommendations) with a little room to spare, and is close to
+   * the original workbook's own sizing.
+   */
+  font-size: 7.5pt;
+  padding-top: 1.5mm;
+  line-height: 1.2;
+}
+
+/*
+ * Frame overrides for the service reports, applied on the print route's root.
+ *
+ * The letterhead keeps its mark and its type; what comes out is the slack around
+ * them, plus a little of the reserved foot. A maintenance report is a dense form
+ * that wants to reach its signature blocks on one sheet, where a quotation is a
+ * letter that breathes — so the two are allowed to differ here rather than being
+ * held to one frame.
+ *
+ * The height and the padding have to move *together*, and that is the trap this
+ * comment exists for. `.q-letterhead` is a fixed-height flex column and the gold
+ * rule is pushed to its bottom with `margin-top: auto`; squeezing the height
+ * without taking the padding back leaves the column overfull, `auto` resolves to
+ * nothing, and the rule and the registration line under it are pushed out of the
+ * box — which is exactly how they went missing from the first version of this.
+ * Budget it: 6mm padding + ~21mm of mark + 0.9mm rule + 1.6mm + ~2.5mm of meta
+ * is a shade over 32mm, so 36mm has room to spare.
+ */
+.q-page-sr {
+  --q-lh-height: 36mm;
+  --q-lh-gap: 3mm;
+  --q-foot: 14mm;
+}
+
+.q-page-sr .q-letterhead {
+  padding-top: 6mm;
+}
+
+@media print {
+  .q-page-sr {
+    --q-foot: 10mm;
+  }
+}
+
+.q-sr-particulars {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.q-sr-particulars th {
+  width: 20mm;
+  text-align: left;
+  font-weight: 700;
+  vertical-align: bottom;
+  padding: 0 2mm 0.4mm 0;
+  white-space: nowrap;
+}
+
+/*
+ * The ruled baseline the original writes each value on. On the value cell only,
+ * so the rule starts after the label rather than under it.
+ */
+.q-sr-particulars td {
+  border-bottom: 0.5pt solid var(--q-rule);
+  padding: 0 0 0.4mm;
+  font-weight: 700;
+  vertical-align: bottom;
+}
+
+/*
+ * The two grey banners. `print-color-adjust: exact` for the same reason the
+ * letterhead rule carries it: printing drops backgrounds by default, and these
+ * are what separate the report's three parts.
+ */
+.q-sr-banner {
+  margin: 3mm 0 0;
+  padding: 0.8mm 2mm;
+  background: #e9e9e9;
+  text-align: center;
+  font-size: 1.25em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.q-sr-lead {
+  margin-top: 1.5mm;
+  font-size: 0.92em;
+  font-style: italic;
+}
+
+/* One border treatment for all four tables — they are one grid on the sheet. */
+.q-sr-table {
+  width: 100%;
+  margin-top: 1.5mm;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.q-sr-table th,
+.q-sr-table td {
+  border: 0.5pt solid var(--q-rule);
+  padding: 0.5mm 1.2mm;
+  vertical-align: middle;
+  /* Long model numbers and pasted findings must wrap, not widen the sheet. */
+  overflow-wrap: anywhere;
+}
+
+.q-sr-table th {
+  text-align: center;
+  font-weight: 700;
+}
+
+/*
+ * A section caption inside a table — "Alarm Panel Supervisory Function",
+ * "Action Taken". Shaded like the banners but quieter, since it labels a table
+ * rather than a part of the report.
+ */
+.q-sr-caption {
+  background: #f2f2f2;
+  font-size: 1.05em;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* A label in the left column of a body row, e.g. "Others", "Conventional". */
+.q-sr-row-label {
+  text-align: left;
+  text-decoration: underline;
+  font-weight: 400;
+}
+
+/* The √ / X / NA column, and the panel-type tick. */
+.q-sr-tick {
+  text-align: center;
+  font-weight: 700;
+}
+
+.q-sr-equipment td {
+  text-align: center;
+}
+
+/*
+ * Column widths, set on `colgroup` rather than on cells — see the note in the
+ * layout. The body is 174mm wide (210 less two 18mm margins), and these are
+ * budgeted against it: enough for a part number and a brand on one line each,
+ * with the remainder to the three count columns, which carry their units
+ * ("SD - 16 Units") rather than a bare number.
+ */
+.q-sr-col-model {
+  width: 24mm;
+}
+
+.q-sr-col-location {
+  width: 26mm;
+}
+
+/*
+ * A narrow tick column and a wide description: most of the six supervisory
+ * descriptions fit one line at 108mm and wrap to two at anything much less,
+ * which is six millimetres of sheet apiece.
+ */
+.q-sr-col-check-label {
+  width: 52mm;
+}
+
+.q-sr-col-tick {
+  width: 14mm;
+}
+
+.q-sr-checklist .q-sr-check-detail {
+  font-size: 0.95em;
+}
+
+/*
+ * Two equal columns, as the original splits them. The minimum height keeps a
+ * one-word finding from collapsing to a hairline row, which is what makes the
+ * table still read as a form once the padding is this tight.
+ */
+.q-sr-findings td {
+  width: 50%;
+  height: 4mm;
+}
+
+/*
+ * What the original writes in red. Kept red on paper — `print-color-adjust`
+ * covers text colour too, and a defect list that prints grey on a mono printer
+ * is still legible because it is the only thing in that column.
+ */
+.q-sr-defect {
+  color: #c0261a;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.q-sr-recommendations td {
+  height: 4mm;
+}
+
+.q-sr-legend {
+  margin-top: 1.5mm;
+  text-align: center;
+  font-size: 0.95em;
+  font-weight: 700;
+}
+
+.q-sr-glyph {
+  font-weight: 700;
+}
+
+/*
+ * The two blocks side by side, as on the sheet. `break-inside: avoid` so a
+ * report that runs long never leaves a signature stranded on a second page.
+ */
+.q-sr-signatures {
+  display: flex;
+  justify-content: space-between;
+  gap: 10mm;
+  margin-top: 6mm;
+  break-inside: avoid;
+}
+
+.q-sr-signature {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/*
+ * Shorter than the 13mm band the letters reserve. The scan still overhangs the
+ * rule, but a maintenance report is countersigned in a hurry on site rather than
+ * filed as a deed, and the four millimetres are worth more to the checklist.
+ */
+.q-sr .q-sig-mark {
+  height: 9mm;
+  padding-left: 4mm;
+}
+
+.q-sr-sig-label {
+  font-size: 1.05em;
+}
+
+.q-sr-sig-name {
+  border-top: 1px solid var(--q-rule);
+  padding-top: 0.8mm;
+  text-align: center;
+  font-weight: 700;
+  /* Reserves the line's height when no name was recorded, so the two blocks
+     stay level and the rule is left to sign on. */
+  min-height: 4mm;
+}
+
+.q-sr-sig-title {
+  text-align: center;
+  font-size: 0.95em;
+  font-style: italic;
+  color: var(--q-muted);
+}
+
+.q-sr-sig-caption {
+  margin-top: 0.6mm;
+  font-size: 0.95em;
+}
+
+/* ---------- FDAS PM service report (photo report) ---------- */
+
+/*
+ * The other half of the service-report feature, and the opposite of the sheet
+ * above in every way that matters to CSS: prose rather than a grid, set at
+ * ordinary reading size, and multi-page by design. So it takes none of the
+ * `.q-sr` compaction — there is nothing to squeeze onto one page here, and
+ * squeezing would only make the photographs smaller.
+ */
+.q-pr {
+  padding-top: 4mm;
+  font-size: 10.5pt;
+  line-height: 1.4;
+}
+
+.q-pr-particulars {
+  margin-bottom: 5mm;
+}
+
+/*
+ * "CLIENT: SHOPPERS SAVER GROCERY" — the label and value on one line, with the
+ * value hanging under itself if it wraps.
+ */
+.q-pr-particular {
+  display: flex;
+  gap: 2mm;
+  margin-bottom: 2.5mm;
+}
+
+.q-pr-particular dt {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.q-pr-section {
+  margin-top: 4mm;
+  /* A heading must never be the last thing on a page. */
+  break-inside: avoid;
+}
+
+.q-pr-section-title {
+  font-size: 10.5pt;
+  font-weight: 700;
+}
+
+/*
+ * Hyphens rather than bullets, as the original writes them, and indented to sit
+ * under the heading's first letter.
+ */
+.q-pr-list {
+  margin: 1mm 0 0 10mm;
+  padding: 0;
+  list-style: none;
+}
+
+.q-pr-list li {
+  position: relative;
+  padding-left: 6mm;
+  margin-bottom: 1mm;
+}
+
+.q-pr-list li::before {
+  content: "-";
+  position: absolute;
+  left: 0;
+}
+
+/* ---------- Photo plates ---------- */
+
+/*
+ * A plate is kept whole: splitting one would put a caption on a different page
+ * from the photographs it names, which is the one thing a plate must not do.
+ * `avoid` is a request rather than a guarantee — a plate taller than a page will
+ * still break — but at three rows of photographs it comfortably fits.
+ */
+.q-pr-plate {
+  margin: 6mm 0 0;
+  break-inside: avoid;
+}
+
+.q-pr-grid {
+  display: grid;
+  gap: 3mm;
+  justify-items: center;
+  align-items: center;
+}
+
+.q-pr-grid-1 {
+  grid-template-columns: minmax(0, 62mm);
+  justify-content: center;
+}
+
+.q-pr-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.q-pr-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/*
+ * `contain`, not `cover`. These are evidence photographs — a technician on a
+ * ladder, a panel as found — and cropping one to fill a tidy box is exactly the
+ * kind of tidying that removes what the photograph was taken to show. The cost
+ * is letterboxing where portrait and landscape shots share a row, which the
+ * original sheets have too.
+ */
+.q-pr-photo {
+  display: block;
+  width: 100%;
+  height: 52mm;
+  object-fit: contain;
+  background: #fff;
+  border: 0.5pt solid #b9b9b9;
+}
+
+.q-pr-grid-1 .q-pr-photo {
+  height: 74mm;
+}
+
+.q-pr-grid-2 .q-pr-photo {
+  height: 62mm;
+}
+
+/* The ruled box the caption sits in, centred under the plate. */
+.q-pr-caption {
+  width: fit-content;
+  max-width: 100%;
+  margin: 3mm auto 0;
+  padding: 1.5mm 6mm;
+  border: 0.5pt solid var(--q-rule);
+  text-align: center;
+  font-size: 10pt;
+  font-weight: 700;
+}
+
 /* ---------- Toolbar (screen only) ---------- */
 
 .q-toolbar {
